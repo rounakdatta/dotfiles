@@ -1,3 +1,4 @@
+set clipboard=unnamedplus
 set autoindent
 
 set number
