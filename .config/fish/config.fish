@@ -13,7 +13,3 @@ set PATH $HIVE_HOME/bin $PATH
 
 set GOPATH $HOME/go
 set PATH $GOPATH/bin $PATH
-
-set BEELINE_EP (pass hotstar/dp/hive/prod/hostname)
-set BEELINE_USER (pass hotstar/dp/hive/prod/username)
-set BEELINE_PWD (pass hotstar/dp/hive/prod/password)
