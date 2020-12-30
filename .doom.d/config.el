@@ -30,7 +30,41 @@
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/personal/rounakdatta.github.io/")
+
+;; org-roam setting
+(setq org-roam-link-title-format "R:%s")
 (setq org-roam-directory "~/personal/rounakdatta.github.io")
+(setq org-roam-index-file "index.org")
+;;org-roam completion system
+(setq org-roam-completion-system 'default)
+;; org-roam template
+(setq org-roam-capture-templates
+      '(("h" "blog" plain
+       (function org-roam--capture-get-point)
+       "%?"
+       :file-name "%<%Y%m%d%H%M%S>-${slug}"
+       :head "#+HUGO_BASE_DIR: ./src
+#+HUGO_TAGS: %^{Tags}
+#+EXPORT_FILE_NAME: %^{export name}
+#+TITLE: ${title}
+#+AUTHOR: Rounak Datta
+#+DATE: %t"
+       :unnarrowed t)
+      ("d" "default" plain
+       (function org-roam--capture-get-point)
+       "%?"
+       :file-name "%<%Y%m%d%H%M%S>-${slug}"
+       :head "#+TITLE: ${title} \n#+ROAM_ALIAS: \n - tags :: \n"
+       :unnarrowed t)
+
+      ("r" "ref" plain
+       (function org-roam--capture-get-point)
+         "%?"
+         :file-name "%<%Y%m%d%H%M%S>-${slug}"
+         :head "#+ROAM_KEY: ${ref}
+#+TITLE: ${title}\n - tags :: \n"
+         :unnarrowed t)
+      ))
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
