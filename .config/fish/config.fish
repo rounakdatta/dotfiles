@@ -8,8 +8,10 @@ set JAVA_HOME /usr/libexec/java_home
 # set local hive and remote connections through beeline correct
 set HADOOP_HOME ~/tooling/hadoop-2.5.1
 set HIVE_HOME ~/tooling/apache-hive-1.2.1-bin
+set CONFLUENT_HOME ~/tooling/confluent-6.0.0
 set PATH $HADOOP_HOME/bin $PATH
 set PATH $HIVE_HOME/bin $PATH
+set PATH $CONFLUENT_HOME/bin $PATH
 
 set GOPATH $HOME/go
 set PATH $GOPATH/bin $PATH
