@@ -68,7 +68,6 @@
 
 ** Raises the bar
 -
--
 ** At the bar
 -
 ** Below the bar
@@ -89,6 +88,46 @@
 -
 **** Cons
 -
+"
+       :unnarrowed t)
+        ("g" "self-goals" plain
+       (function org-roam--capture-get-point)
+       "%?"
+       :file-name "%<%Y%m%d%H%M%S>-${slug}"
+       :head "#+HUGO_BASE_DIR: ./src
+#+HUGO_TAGS: %^{Tags}
+#+EXPORT_FILE_NAME: %^{export name}
+#+TITLE: Where do you see yourself in ${title}
+#+AUTHOR: Rounak Datta
+#+DATE: %t
+
+* Current
+** Career
+*** Interesting turns
+*** Pain points
+*** Investment scope
+** Hobby
+*** Interesting turns
+*** Pain points
+*** Investment scope
+** Life
+*** Interesting turns
+*** Pain points
+*** Investment scope
+
+* The future time point
+** Career
+*** Investment returns
+*** Regret minimization
+*** Furthur investment scope
+** Hobby
+*** Investment returns
+*** Regret minimization
+*** Furthur investment scope
+** Life
+*** Investment returns
+*** Regret minimization
+*** Furthur investment scope
 "
        :unnarrowed t)
       ("d" "default" plain
