@@ -50,6 +50,47 @@
 #+AUTHOR: Rounak Datta
 #+DATE: %t"
        :unnarrowed t)
+        ("r" "interviewer" plain
+       (function org-roam--capture-get-point)
+       "%?"
+       :file-name "%<%Y%m%d%H%M%S>-${slug}"
+       :head "#+HUGO_BASE_DIR: ./src
+#+HUGO_TAGS: %^{Tags}
+#+EXPORT_FILE_NAME: %^{export name}
+#+TITLE: Hotstar Interview Candidate - ${title}
+#+AUTHOR: Rounak Datta
+#+DATE: %t
+
+* CANDIDATE_NAME
+- Lever: [[LEVER_URL]]
+- Vote: DECISION
+- Competencies being covered: COMPETENCY
+
+** Raises the bar
+-
+-
+** At the bar
+-
+** Below the bar
+-
+
+** Reasons for leaving the company
+-
+
+** Questions for the team
+-
+
+** Problems asked & Candidate's solution
+*** ORG_BACKLINK_TO_PROBLEM
+#+begin_src LANGUAGE
+#+end_src
+
+**** Pros
+-
+**** Cons
+-
+"
+       :unnarrowed t)
       ("d" "default" plain
        (function org-roam--capture-get-point)
        "%?"
