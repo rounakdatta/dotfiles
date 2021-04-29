@@ -31,6 +31,8 @@
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/personal/rounakdatta.github.io/")
 
+(setq projectile-project-search-path '("~/personal/" "~/hotstar/"))
+
 ;; org-roam setting
 (setq org-roam-link-title-format "R:%s")
 (setq org-roam-directory "~/personal/rounakdatta.github.io")
