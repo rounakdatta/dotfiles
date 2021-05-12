@@ -2,7 +2,6 @@ if [ -n "$TMUX_PANE" ]
   set HISTFILE $HOME/.local/share/fish/fish_history_tmux_$TMUX_PANE
 end
 
-set JAVA_HOME /usr/libexec/java_home
 
 set HADOOP_HOME ~/tooling/hadoop-2.5.1
 set HIVE_HOME ~/tooling/apache-hive-1.2.1-bin
