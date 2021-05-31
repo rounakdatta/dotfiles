@@ -70,10 +70,13 @@
 
 ** Highlights
 
+
 ** Raises the bar
 -
+
 ** At the bar
 -
+
 ** Below the bar
 -
 
@@ -92,6 +95,37 @@
 -
 **** Cons
 -
+"
+       :unnarrowed t)
+        ("p" "problem" plain
+       (function org-roam--capture-get-point)
+       "%?"
+       :file-name "%<%Y%m%d%H%M%S>-${slug}"
+       :head "#+HUGO_BASE_DIR: ./src
+#+HUGO_TAGS: %^{Tags}
+#+EXPORT_FILE_NAME: %^{export name}
+#+TITLE: Hotstar Interview Problem - ${title}
+#+AUTHOR: Rounak Datta
+#+DATE: %t
+
+* ${title}
+
+** Problem Statement
+
+
+** Discussion
+
+
+** Input
+#+begin_src
+Input:
+Output:
+#+end_src
+
+** Solution
+#+begin_src C++ :flags --std=c++11 :exports both
+#+end_src
+
 "
        :unnarrowed t)
         ("g" "self-goals" plain
