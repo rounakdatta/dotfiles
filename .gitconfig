@@ -2,3 +2,7 @@
 	name = Rounak Datta
 	email = rounakdatta12@gmail.com
 	signingkey = A04E86FD28F5A421
+
+[includeIf "gitdir:~/work/"]
+	path = ~/.gitconfig.work
+
