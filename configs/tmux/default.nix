@@ -20,6 +20,8 @@
         set -g default-terminal "screen-256color"
         set -as terminal-overrides ',xterm*:Tc:sitm=\E[3m'
 
+        set-option -g default-shell /run/current-system/sw/bin/fish
+
         # sensible yet memory-friendly scroll history
         set -g history-limit 20000
 

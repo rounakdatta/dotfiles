@@ -16,6 +16,8 @@
       google-chrome
       gopass
       gopass-jsonapi
+      passExtensions.pass-update
+      spotify
     ];
   };
 

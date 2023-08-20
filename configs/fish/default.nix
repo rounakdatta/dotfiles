@@ -6,6 +6,8 @@
             set HISTFILE $HOME/.local/share/fish/fish_history_tmux_$TMUX_PANE
             end
 
+            set default-shell /run/current-system/sw/bin/fish
+
             set GOPATH $HOME/go
             set PATH $GOPATH/bin $PATH
             '' +

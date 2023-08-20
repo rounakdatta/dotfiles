@@ -6,5 +6,6 @@
     ./fish
     ./gnupg
     ./ssh
+    ./gopass
   ];
 }
