@@ -7,5 +7,6 @@
     ./gnupg
     ./ssh
     ./gopass
+    ./nextcloud
   ];
 }

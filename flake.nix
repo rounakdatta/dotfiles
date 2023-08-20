@@ -1,5 +1,5 @@
 {
-  description = "dot-me-if-you-can";
+  description = "Alexander Nixinton's dotfiles";
 
   inputs = {
     nixpkgs = {

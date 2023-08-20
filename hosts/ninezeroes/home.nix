@@ -14,17 +14,28 @@
       unzip
       vscode
       google-chrome
+
+      # password store related packages
       gopass
       gopass-jsonapi
       passExtensions.pass-update
+
       spotify
+      nextcloud-client
+
+      # copy/pasting via command line
+      xsel
+      # getting battery and temperature information
+      acpi
+      # getting currently playing media information
+      playerctl
     ];
   };
 
   programs = {
     htop = {
       enable = true;
-      settings.color_scheme = 1;
+      settings.color_scheme = 6;
     };
 
     home-manager = {

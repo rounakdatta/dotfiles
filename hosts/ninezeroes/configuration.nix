@@ -147,4 +147,12 @@
   system.stateVersion = "23.05"; # Did you read the comment?
 
   programs.fish.enable = true;
+  fonts = {
+    packages = with pkgs; [
+      noto-fonts
+      noto-fonts-cjk
+      noto-fonts-emoji
+      noto-fonts-extra
+    ];
+  };
 }

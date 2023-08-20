@@ -6,12 +6,13 @@
             set HISTFILE $HOME/.local/share/fish/fish_history_tmux_$TMUX_PANE
             end
 
-            set default-shell /run/current-system/sw/bin/fish
-
             set GOPATH $HOME/go
             set PATH $GOPATH/bin $PATH
             '' +
             ''
+            set -gx LC_ALL en_IN.UTF-8
+            set -gx LANG en_IN.UTF-8
+
             set -U fish_color_autosuggestion      brblack
             set -U fish_color_cancel              -r
             set -U fish_color_command             brgreen
@@ -39,6 +40,10 @@
             set -U fish_pager_color_description   yellow
             set -U fish_pager_color_prefix        'white' '--bold' '--underline'
             set -U fish_pager_color_progress      'brwhite' '--background=cyan'
+            '' +
+            ''
+            alias pbcopy="xsel --clipboard --input"
+            alias pbpaste="xsel --clipboard --output"
             '';
             functions = {
                 fish_prompt = ''

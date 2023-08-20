@@ -101,12 +101,12 @@
         setw -g set-clipboard off
         setw -g mode-keys vi
 
-        bind-key -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "pbcopy"
-        bind-key -n -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "pbcopy"
+        bind-key -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "xsel --clipboard --input"
+        bind-key -n -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "xsel --clipboard --input"
 
         # Buffers to/from clipboard
-        bind C-c run "tmux save-buffer - | reattach-to-user-namespace pbcopy"
-        bind C-v run "tmux set-buffer (reattach-to-user-namespace pbpaste); tmux paste-buffer"
+        bind C-c run "tmux save-buffer - | xsel --clipboard --input"
+        bind C-v run "tmux set-buffer $(xsel --clipboard --output); tmux paste-buffer"
 
         # Base16 Styling Guidelines:
 
@@ -158,9 +158,9 @@
         tm_session_name="#[default,bg=$base00,fg=$base0E] #S "
         set -g status-left "$tm_session_name"
 
-        tm_tunes="#[bg=$base00,fg=$base0D] ♫ #(osascript -l JavaScript ~/.dotfiles/applescripts/tunes.js)"
-        tm_battery="#[fg=$base0F,bg=$base00] ♥ #(battery)"
-        tm_date="#[default,bg=$base00,fg=$base0C] %R"
+        tm_tunes="#[bg=$base00,fg=$base0D] ♫ #(playerctl metadata title)"
+        tm_battery="#[fg=$base0F,bg=$base00] ♥ #(acpi --battery | awk \'{print \$NF}\')"
+        tm_date="#[default,bg=$base00,fg=$base0C] %I:%M %p"
         tm_host="#[fg=$base0E,bg=$base00] #h "
         set -g status-right "$tm_tunes $tm_battery $tm_date $tm_host"
         '';
