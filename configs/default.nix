@@ -8,5 +8,6 @@
     ./ssh
     ./gopass
     ./nextcloud
+    ./emacs
   ];
 }

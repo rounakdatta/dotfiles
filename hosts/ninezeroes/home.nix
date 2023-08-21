@@ -14,14 +14,14 @@
       unzip
       vscode
       google-chrome
+      spotify
+      nextcloud-client
+      tailscale
 
       # password store related packages
       gopass
       gopass-jsonapi
       passExtensions.pass-update
-
-      spotify
-      nextcloud-client
 
       # copy/pasting via command line
       xsel
