@@ -155,4 +155,7 @@
       noto-fonts-extra
     ];
   };
+
+  # temporary: as we learn more Nix, this config will find its right home
+  services.tailscale.enable = true;
 }
