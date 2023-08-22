@@ -159,7 +159,7 @@
         set -g status-left "$tm_session_name"
 
         tm_tunes="#[bg=$base00,fg=$base0D] ♫ #(playerctl metadata title)"
-        tm_battery="#[fg=$base0F,bg=$base00] ♥ #(acpi --battery | awk \'{print \$NF}\')"
+        tm_battery="#[fg=$base0F,bg=$base00] ♥ #(acpi --battery | awk \'{gsub(\",\", \"\"); print \$4}\')"
         tm_date="#[default,bg=$base00,fg=$base0C] %I:%M %p"
         tm_host="#[fg=$base0E,bg=$base00] #h "
         set -g status-right "$tm_tunes $tm_battery $tm_date $tm_host"

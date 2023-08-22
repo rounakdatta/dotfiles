@@ -17,6 +17,8 @@
       spotify
       nextcloud-client
       tailscale
+      # sqlite3 is a must dependency of emacs, nevertheless I love sqlite
+      sqlite
 
       # password store related packages
       gopass

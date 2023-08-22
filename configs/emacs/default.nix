@@ -16,7 +16,7 @@
             fi
             cd $DOOM
 
-            # the following env var export make sure that binaries like `git`, `emacs` are available in PATH
+            # the following PATH addition is to make sure that binaries like `git`, `emacs` are available for use
             export PATH="${config.home.path}/bin:$PATH"
             
             git init
