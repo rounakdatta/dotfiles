@@ -8,6 +8,7 @@
 
             set GOPATH $HOME/go
             set PATH $GOPATH/bin $PATH
+            set EDITOR nvim
             '' +
             ''
             set -gx LC_ALL en_IN.UTF-8
