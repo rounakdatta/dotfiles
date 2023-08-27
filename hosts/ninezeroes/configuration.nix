@@ -98,7 +98,7 @@
   users.users.rounak = {
     isNormalUser = true;
     description = "Rounak";
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [ "networkmanager" "wheel" "docker" ];
     packages = with pkgs; [
       firefox
       git
@@ -160,4 +160,8 @@
 
   # temporary: as we learn more Nix, this config will find its right home
   services.tailscale.enable = true;
+
+  virtualisation.docker = {
+    enable = true;
+  };
 }

@@ -19,6 +19,8 @@
       tailscale
       # sqlite3 is a must dependency of emacs, nevertheless I love sqlite
       sqlite
+      ripgrep
+      openssl
 
       # password store related packages
       gopass
