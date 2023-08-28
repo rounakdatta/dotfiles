@@ -21,6 +21,11 @@
       sqlite
       ripgrep
       openssl
+      postgresql
+      inetutils # network utilities like telnet etc
+      bind # more network utilities like dig etc
+      fzf
+      inotify-tools
 
       # password store related packages
       gopass
