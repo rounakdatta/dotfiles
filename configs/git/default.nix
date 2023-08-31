@@ -7,5 +7,8 @@
       key = "A04E86FD28F5A421";
       signByDefault = true;
     };
+    extraConfig = {
+      diff.external = "difft";
+    };
   };
 }

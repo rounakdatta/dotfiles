@@ -26,6 +26,7 @@
       bind # more network utilities like dig etc
       fzf
       inotify-tools
+      difftastic
 
       # password store related packages
       gopass
