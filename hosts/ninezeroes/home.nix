@@ -27,6 +27,8 @@
       fzf
       inotify-tools
       difftastic
+      nushell
+      atuin
 
       # password store related packages
       gopass

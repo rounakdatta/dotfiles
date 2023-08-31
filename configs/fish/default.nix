@@ -45,6 +45,7 @@
             ''
             alias pbcopy="xsel --clipboard --input"
             alias pbpaste="xsel --clipboard --output"
+            atuin init fish | source
             '';
             functions = {
                 fish_prompt = ''
