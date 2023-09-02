@@ -29,6 +29,10 @@
       difftastic
       nushell
       atuin
+      flameshot
+      mpv
+      vlc
+      python3
 
       # password store related packages
       gopass

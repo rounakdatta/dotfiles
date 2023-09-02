@@ -11,6 +11,11 @@
         Preferredauthentications publickey
         User rounakdatta
         IdentityFile ~/.ssh/keys/personal.pem
+
+        Host jomjom
+        Preferredauthentications publickey
+        User root
+        IdentityFile ~/.ssh/keys/personal.pem
     '';
     };
 }
