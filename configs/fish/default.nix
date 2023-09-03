@@ -9,6 +9,10 @@
             set GOPATH $HOME/go
             set PATH $GOPATH/bin $PATH
             set EDITOR nvim
+            
+            # although we've set the NixOS-level setting, remember that Chrome would require this `TZ` envvar
+            # otherwise, it defaults to UTC
+            set TZ Asia/Kolkata
             '' +
             ''
             set -gx LC_ALL en_IN.UTF-8

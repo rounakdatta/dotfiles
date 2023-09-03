@@ -33,6 +33,7 @@
       mpv
       vlc
       python3
+      jq
 
       # password store related packages
       gopass
