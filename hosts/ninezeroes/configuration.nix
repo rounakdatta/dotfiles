@@ -155,6 +155,8 @@
       noto-fonts-extra
       lohit-fonts.devanagari
       lohit-fonts.bengali
+      google-fonts
+      corefonts
     ];
   };
 
