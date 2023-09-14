@@ -34,6 +34,8 @@
   # Enable networking
   networking.networkmanager.enable = true;
 
+  networking.nameservers = [ "45.90.28.65" "45.90.30.65" "1.1.1.1" "8.8.8.8" ];
+
   nix.settings = {
     # this is required because flakes hasn't graduated into a stable feature yet
     experimental-features = [ "nix-command" "flakes" ];
