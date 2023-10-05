@@ -34,6 +34,7 @@
       vlc
       python3
       jq
+      qbittorrent
 
       # password store related packages
       gopass
