@@ -35,6 +35,9 @@
       python3
       jq
       qbittorrent
+      direnv
+      zip
+      wget
 
       # password store related packages
       gopass
