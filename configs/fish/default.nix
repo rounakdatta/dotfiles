@@ -54,6 +54,11 @@
             '';
             functions = {
                 fish_prompt = ''
+		# special treatment just for nix-develop shells
+		if set -q IN_NIX_DEVELOP_SHELL
+		  echo -n "[NIX-DEVELOP] "
+		end
+
                 set_color $fish_color_cwd
                 echo -n (basename $PWD)
                 set_color normal
