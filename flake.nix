@@ -48,7 +48,10 @@
           system = "aarch64-darwin";
           modules = [
             {
-              imports = [ ./hosts/ckmac/configuration.nix ];
+              imports = [ 
+                ./hosts/ckmac/configuration.nix
+                ./hosts/ckmac/software.nix
+              ];
               _module.args.self = self;
             }
             home-manager.darwinModules.home-manager

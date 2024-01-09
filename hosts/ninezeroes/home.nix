@@ -11,7 +11,9 @@
 
     # host-level packages
     packages = with pkgs; [
+      zip
       unzip
+      tmux
       vscode
       google-chrome
       spotify
@@ -34,10 +36,16 @@
       vlc
       python3
       jq
+      yq
       qbittorrent
-      direnv
-      zip
       wget
+      dive
+      ffmpeg
+      shellcheck
+      postman
+      krita
+      qutebrowser
+      zoom-us
 
       # password store related packages
       gopass

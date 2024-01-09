@@ -1,4 +1,5 @@
 { config, pkgs, ... }: {
+  
         programs.fish = {
             enable = true;
             interactiveShellInit = ''
@@ -49,15 +50,21 @@
             ''
             alias pbcopy="xsel --clipboard --input"
             alias pbpaste="xsel --clipboard --output"
-	    alias vim="nvim"
+	          alias vim="nvim"
             atuin init fish --disable-up-arrow | source
+            '' +
+            ''
+            # this is needed, otherwise darwin-rebuild wouldn't be in PATH
+            if test (uname) = Darwin
+              fish_add_path --prepend --global "$HOME/.nix-profile/bin" /nix/var/nix/profiles/default/bin /run/current-system/sw/bin
+            end
             '';
             functions = {
                 fish_prompt = ''
-		# special treatment just for nix-develop shells
-		if set -q IN_NIX_DEVELOP_SHELL
-		  echo -n "[NIX-DEVELOP] "
-		end
+		            # special treatment just for nix-develop shells
+		            if set -q IN_NIX_DEVELOP_SHELL
+		              echo -n "[NIX-DEVELOP] "
+		            end
 
                 set_color $fish_color_cwd
                 echo -n (basename $PWD)
