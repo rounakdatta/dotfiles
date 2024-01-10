@@ -1,4 +1,7 @@
-{ config, pkgs, ... }: {
+{ config, pkgs, ... }: 
+let
+    isDarwin = pkgs.stdenv.isDarwin;
+in {
     programs.tmux = {
         enable = true;
         plugins = with pkgs; [
@@ -100,14 +103,29 @@
         # switch clipboard off (else creates a race condition)
         setw -g set-clipboard off
         setw -g mode-keys vi
+        ''
+        +
+        (if isDarwin then
+        ''
+        bind-key -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "pbcopy"
+        bind-key -n -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "pbcopy"
 
+        # Buffers to/from clipboard
+        bind C-c run "tmux save-buffer - | reattach-to-user-namespace pbcopy"
+        bind C-v run "tmux set-buffer (reattach-to-user-namespace pbpaste); tmux paste-buffer"
+        ''
+        else
+        ''
         bind-key -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "xsel --clipboard --input"
         bind-key -n -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "xsel --clipboard --input"
 
         # Buffers to/from clipboard
-        bind C-c run "tmux save-buffer - | xsel --clipboard --input"
-        bind C-v run "tmux set-buffer $(xsel --clipboard --output); tmux paste-buffer"
-
+        bind C-c run "tmux save-buffer - | reattach-to-user-namespace xsel --clipboard --input"
+        bind C-v run "tmux set-buffer (reattach-to-user-namespace $(xsel --clipboard --output)); tmux paste-buffer"
+        ''
+        )
+        +
+        ''
         # Base16 Styling Guidelines:
 
         base00=default   # - Default

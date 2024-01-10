@@ -2,21 +2,17 @@
 { pkgs, ... }: {
 
   imports = [
-     ../../configs/git
+      ../../configs
   ];
 
   home = {
     stateVersion = "23.05";
     username = "rounak";
 
-    # packages that need to be installed through Nix packages
-    # they should be searched and verified on https://search.nixos.org/packages
-    # this list is populated keeping aarch64 in mind
     packages = with pkgs; [
       zip
       unzip
       tmux
-      vscode
       spotify
       sqlite
       ripgrep
@@ -38,8 +34,8 @@
       ffmpeg
       kotlin
       shellcheck
-      qutebrowser
       zoom-us
+      nodejs_18
 
       # kubernetes related packages
       kubernetes-helm

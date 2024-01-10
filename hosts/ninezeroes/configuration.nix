@@ -108,8 +108,6 @@
       firefox
       git
       vim
-      kitty
-    #  thunderbird
     ];
     shell = pkgs.fish;
   };

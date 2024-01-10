@@ -10,19 +10,20 @@
 
   networking.hostName = "ckmac";
 
-  programs.fish.enable = true;
   users.users.rounak = {
     # workaround for https://github.com/nix-community/home-manager/issues/4026
     home = "/Users/rounak";
     description = "Rounak";
     packages = with pkgs; [
       git
-      vim
-      kitty
     ];
     shell = pkgs.fish;
   };
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
+
+  system.activationScripts.postActivation.text = ''
+  chsh -s /run/current-system/sw/bin/fish rounak
+  '';
 }

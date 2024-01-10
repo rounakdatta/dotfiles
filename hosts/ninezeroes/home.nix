@@ -11,6 +11,7 @@
 
     # host-level packages
     packages = with pkgs; [
+      kitty
       zip
       unzip
       tmux

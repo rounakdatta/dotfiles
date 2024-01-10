@@ -15,9 +15,13 @@
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    mac-app-util = {
+      url = "github:hraban/mac-app-util";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, nix-darwin, ... } @ inputs: {
+  outputs = { self, nixpkgs, home-manager, nix-darwin, mac-app-util, ... } @ inputs: {
       # starting point of an x86_64 NixOS installation
       nixosConfigurations = {
         ninezeroes = nixpkgs.lib.nixosSystem {
@@ -47,6 +51,7 @@
         ckmac = nix-darwin.lib.darwinSystem {
           system = "aarch64-darwin";
           modules = [
+            mac-app-util.darwinModules.default
             {
               imports = [ 
                 ./hosts/ckmac/configuration.nix
@@ -58,9 +63,14 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
-              users.users.rounak.home = "/Users/rounak";
+              users.users.rounak = {
+                home = "/Users/rounak";
+              };
               home-manager.users.rounak = {
-                imports = [ ./hosts/ckmac/home.nix ];
+                imports = [
+                  mac-app-util.homeManagerModules.default
+                  ./hosts/ckmac/home.nix
+                ];
               };
             }
           ];

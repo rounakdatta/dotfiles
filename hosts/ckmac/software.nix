@@ -1,5 +1,20 @@
 { pkgs, ... }: {
 
+  environment = {
+    loginShell = pkgs.fish;
+    
+    # this is so that fish gets added to /etc/shells
+    shells = [
+      pkgs.fish
+    ];
+
+    # these are installed globally to /Applications/Nix Apps/
+    systemPackages = with pkgs; [
+      fish
+      kitty
+    ];
+  };
+
   homebrew = {
     enable = true;
     caskArgs.no_quarantine = true;
@@ -18,8 +33,8 @@
     # `brew list <>` can help pinpoint package name
     # for both ordinary packages and casks
     brews = [
+        "fish"
         "curl"
-        "nextcloud"
         "awscli"
         "d12frosted/emacs-plus/emacs-plus"
         "mas"
@@ -31,7 +46,9 @@
     ];
 
     casks = [
+        "visual-studio-code"
         "google-chrome"
+        "nextcloud"
         "vlc"
         "intellij-idea-ce"
         "balenaetcher"

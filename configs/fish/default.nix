@@ -1,15 +1,18 @@
-{ config, pkgs, ... }: {
-  
+{ config, pkgs, ... }: 
+let
+    isDarwin = pkgs.stdenv.isDarwin;
+in {
         programs.fish = {
             enable = true;
             interactiveShellInit = ''
             if [ -n "$TMUX_PANE" ]
-            set HISTFILE $HOME/.local/share/fish/fish_history_tmux_$TMUX_PANE
+              set HISTFILE $HOME/.local/share/fish/fish_history_tmux_$TMUX_PANE
             end
 
             set GOPATH $HOME/go
             set PATH $GOPATH/bin $PATH
             set EDITOR nvim
+            set SHELL /run/current-system/sw/bin/fish
             
             # although we've set the NixOS-level setting, remember that Chrome would require this `TZ` envvar
             # otherwise, it defaults to UTC
@@ -51,14 +54,23 @@
             alias pbcopy="xsel --clipboard --input"
             alias pbpaste="xsel --clipboard --output"
 	          alias vim="nvim"
-            atuin init fish --disable-up-arrow | source
             '' +
+            (if isDarwin then
             ''
             # this is needed, otherwise darwin-rebuild wouldn't be in PATH
-            if test (uname) = Darwin
-              fish_add_path --prepend --global "$HOME/.nix-profile/bin" /nix/var/nix/profiles/default/bin /run/current-system/sw/bin
-            end
-            '';
+            fish_add_path --prepend --global "$HOME/.nix-profile/bin" /nix/var/nix/profiles/default/bin /run/current-system/sw/bin
+            set PATH $PATH /etc/profiles/per-user/rounak/bin
+            set PATH $PATH /opt/homebrew/bin
+            ''
+            else
+            ''
+            ''
+            )
+            +
+            ''
+            atuin init fish --disable-up-arrow | source
+            ''
+            ;
             functions = {
                 fish_prompt = ''
 		            # special treatment just for nix-develop shells
