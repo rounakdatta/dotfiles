@@ -23,6 +23,6 @@
   nixpkgs.config.allowUnfree = true;
 
   system.activationScripts.postActivation.text = ''
-  chsh -s /run/current-system/sw/bin/fish rounak
+    chsh -s /run/current-system/sw/bin/fish rounak
   '';
 }

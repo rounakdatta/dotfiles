@@ -1,7 +1,7 @@
 { config, pkgs, ... }: {
 
   imports = [
-     ../../configs
+    ../../configs
   ];
 
   home = {
@@ -47,6 +47,7 @@
       krita
       qutebrowser
       zoom-us
+      nixpkgs-fmt
 
       # password store related packages
       gopass

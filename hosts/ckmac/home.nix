@@ -1,13 +1,11 @@
-
 { pkgs, ... }: {
 
   imports = [
-      ../../configs
+    ../../configs
   ];
 
   home = {
     stateVersion = "23.05";
-    username = "rounak";
 
     packages = with pkgs; [
       zip
@@ -36,6 +34,7 @@
       shellcheck
       zoom-us
       nodejs_18
+      nixpkgs-fmt
 
       # kubernetes related packages
       kubernetes-helm
@@ -55,11 +54,11 @@
 
   programs = {
     home-manager = {
-        enable = true;
+      enable = true;
     };
 
     password-store = {
-        enable = true;
+      enable = true;
     };
   };
 
