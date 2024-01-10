@@ -1,0 +1,19 @@
+name: Validate if the Nix setup is correctly formatted and builds
+on: [push]
+jobs:
+  check-if-formatted:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup the Nix playground
+        uses: nixbuild/nix-quick-install-action@v26
+
+      - name: Install nixpkgs-fmt
+        run: nix-env -iA nixpkgs.nixpkgs-fmt
+
+      - name: Figure out if the codebase is correctly formatted
+        run: |
+          UNFORMATTED=$(find . -iname "*.nix" -exec nixpkgs-fmt --check {} + | wc -l)
+          if [ "$UNFORMATTED" -ne 0 ]; then
+            echo "$UNFORMATTED / $(find . -iname "*.nix" | wc -l) files would have been reformatted"
+            exit 1
+          fi

@@ -4,7 +4,7 @@ let
 in
 {
   programs.fish = {
-    enable = true;
+      enable = true;
     interactiveShellInit = ''
       if [ -n "$TMUX_PANE" ]
         set HISTFILE $HOME/.local/share/fish/fish_history_tmux_$TMUX_PANE
