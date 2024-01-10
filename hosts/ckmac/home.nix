@@ -1,4 +1,4 @@
-{ config, pkgs, ... }: {
+{ pkgs, ... }: {
 
   imports = [
     ../../configs
@@ -6,35 +6,23 @@
 
   home = {
     stateVersion = "23.05";
-    username = config.home.username;
-    homeDirectory = "/home/${config.home.username}";
 
-    # host-level packages
     packages = with pkgs; [
-      kitty
       zip
       unzip
       tmux
-      vscode
-      google-chrome
       spotify
-      nextcloud-client
-      tailscale
-      # sqlite3 is a must dependency of emacs, nevertheless I love sqlite
       sqlite
       ripgrep
       openssl
       postgresql
-      inetutils # network utilities like telnet etc
-      bind # more network utilities like dig etc
+      inetutils
+      bind
       fzf
-      inotify-tools
       difftastic
       nushell
       atuin
-      flameshot
       mpv
-      vlc
       python3
       jq
       yq
@@ -42,33 +30,29 @@
       wget
       dive
       ffmpeg
+      kotlin
       shellcheck
-      postman
-      krita
-      qutebrowser
       zoom-us
+      nodejs_18
       nixpkgs-fmt
+
+      # kubernetes related packages
+      kubernetes-helm
+      kind
 
       # password store related packages
       gopass
       gopass-jsonapi
       passExtensions.pass-update
 
-      # copy/pasting via command line
+      # macOS has pbcopy/pbpaste, nevertheless
       xsel
-      # getting battery and temperature information
-      acpi
       # getting currently playing media information
-      playerctl
+      # playerctl
     ];
   };
 
   programs = {
-    htop = {
-      enable = true;
-      settings.color_scheme = 6;
-    };
-
     home-manager = {
       enable = true;
     };
@@ -77,4 +61,5 @@
       enable = true;
     };
   };
+
 }
