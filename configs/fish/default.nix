@@ -52,9 +52,9 @@ in
       set -U fish_pager_color_progress      'brwhite' '--background=cyan'
     '' +
     ''
-                  alias pbcopy="xsel --clipboard --input"
-                  alias pbpaste="xsel --clipboard --output"
-      	          alias vim="nvim"
+      alias pbcopy="xsel --clipboard --input"
+      alias pbpaste="xsel --clipboard --output"
+      alias vim="nvim"
     '' +
     (if isDarwin then
       ''
@@ -74,16 +74,16 @@ in
     ;
     functions = {
       fish_prompt = ''
-        		            # special treatment just for nix-develop shells
-        		            if set -q IN_NIX_DEVELOP_SHELL
-        		              echo -n "[NIX-DEVELOP] "
-        		            end
+        # special treatment just for nix-develop shells
+        if set -q IN_NIX_DEVELOP_SHELL
+          echo -n "[NIX-DEVELOP] "
+        end
 
-                        set_color $fish_color_cwd
-                        echo -n (basename $PWD)
-                        set_color normal
-                        set -g _fish_git_prompt_showupstream auto
-                        echo -n (fish_git_prompt) ' $ '
+        set_color $fish_color_cwd
+        echo -n (basename $PWD)
+        set_color normal
+        set -g _fish_git_prompt_showupstream auto
+        echo -n (fish_git_prompt) ' $ '
       '';
     };
   };

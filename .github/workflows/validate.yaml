@@ -1,0 +1,12 @@
+name: Validate if the Nix setup is correctly formatted and builds
+on: [push]
+jobs:
+  check-if-formatted:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: cachix/install-nix-action@v22
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+    - uses: actions/checkout@v3
+    - name: Check format
+      run: nix-shell -p nixpkgs-fmt --run 'nixpkgs-fmt --check .'
