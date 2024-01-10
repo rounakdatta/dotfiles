@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ config, pkgs, ... }: {
 
   imports = [
      ../../configs
@@ -6,8 +6,8 @@
 
   home = {
     stateVersion = "23.05";
-    username = "rounak";
-    homeDirectory = "/home/rounak";
+    username = config.home.username;
+    homeDirectory = "/home/${config.home.username}";
 
     # host-level packages
     packages = with pkgs; [
