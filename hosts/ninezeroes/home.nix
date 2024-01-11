@@ -6,8 +6,8 @@
 
   home = {
     stateVersion = "23.05";
-    username = config.home.username;
-    homeDirectory = "/home/${config.home.username}";
+    username = "rounak";
+    homeDirectory = "/home/rounak";
 
     # host-level packages
     packages = with pkgs; [
@@ -43,7 +43,7 @@
       dive
       ffmpeg
       shellcheck
-      postman
+      # postman
       krita
       qutebrowser
       zoom-us
