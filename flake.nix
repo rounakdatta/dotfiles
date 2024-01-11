@@ -16,6 +16,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # this is a quick util a good GitHub samaritan wrote to solve for
+    # https://github.com/nix-community/home-manager/issues/1341#issuecomment-1791545015
     mac-app-util = {
       url = "github:hraban/mac-app-util";
     };

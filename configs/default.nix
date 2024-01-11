@@ -3,6 +3,7 @@
     ./git
     ./tmux
     ./vim
+    ./bash
     ./fish
     ./gnupg
     ./ssh
