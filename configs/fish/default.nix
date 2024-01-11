@@ -20,8 +20,8 @@ in
       set TZ Asia/Kolkata
     '' +
     ''
-      set -gx LC_ALL en_IN.UTF-8
-      set -gx LANG en_IN.UTF-8
+      set -gx LC_ALL en_US.UTF-8
+      set -gx LANG en_US.UTF-8
 
       set -U fish_color_autosuggestion      brblack
       set -U fish_color_cancel              -r

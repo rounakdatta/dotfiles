@@ -22,6 +22,7 @@
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
+  # TODO: generalize the username here
   system.activationScripts.postActivation.text = ''
     chsh -s /run/current-system/sw/bin/fish rounak
   '';
