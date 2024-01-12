@@ -13,6 +13,7 @@
       let &t_EI = "\<esc>[2 q"
 
       set backspace=2
+      set smartcase
     '';
   };
 }
