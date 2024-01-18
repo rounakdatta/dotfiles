@@ -35,6 +35,7 @@
       zoom-us
       nodejs_18
       nixpkgs-fmt
+      gradle_7
 
       # kubernetes related packages
       kubernetes-helm
