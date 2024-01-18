@@ -28,6 +28,7 @@
     taps = [
       "d12frosted/emacs-plus"
       "pulumi/tap"
+      "homebrew/cask-versions"
     ];
 
     # `brew list <>` can help pinpoint package name
@@ -70,7 +71,8 @@
       "slack"
       "spotify"
       "sublime-text"
-      "temurin17" # presently the best FOSS Java SDK
+      "temurin17"
+      "bitwarden"
     ];
 
     # `mas search <>` can help pinpoint package name
