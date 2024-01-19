@@ -63,6 +63,7 @@ in
         set PATH $PATH /etc/profiles/per-user/${config.home.username}/bin
         set PATH $PATH /opt/homebrew/bin
         set JAVA_HOME /usr/libexec/java_home
+	set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
       ''
     else
       ''
