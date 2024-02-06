@@ -44,6 +44,8 @@
       "skaffold"
       "watch"
       "yarn" # the JS package manager, not the hadoop scheduler
+      "azure-cli"
+      "ollama"
     ];
 
     casks = [
