@@ -15,6 +15,7 @@ in
         export PATH="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:$PATH"
         export PATH="$PATH:/etc/profiles/per-user/${config.home.username}/bin"
         export PATH="$PATH:/opt/homebrew/bin"
+	export PATH="$PATH:/opt/homebrew/opt/node@18/bin"
         export JAVA_HOME=/usr/libexec/java_home
         export PASSWORD_STORE_DIR="/Users/${config.home.username}/.password-store"
       ''

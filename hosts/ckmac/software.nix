@@ -43,6 +43,7 @@
       "pulumi/tap/pulumi"
       "skaffold"
       "watch"
+      "node@18"
       "yarn" # the JS package manager, not the hadoop scheduler
       "azure-cli"
       "ollama"
