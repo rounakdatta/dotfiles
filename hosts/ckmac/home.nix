@@ -33,7 +33,6 @@
       kotlin
       shellcheck
       zoom-us
-      nodejs_18
       nixpkgs-fmt
       gradle_7
 

@@ -58,12 +58,13 @@ in
     '' +
     (if isDarwin then
       ''
-        # this is needed, otherwise darwin-rebuild wouldn't be in PATH
-        fish_add_path --prepend --global "$HOME/.nix-profile/bin" /nix/var/nix/profiles/default/bin /run/current-system/sw/bin
-        set PATH $PATH /etc/profiles/per-user/${config.home.username}/bin
-        set PATH $PATH /opt/homebrew/bin
-        set JAVA_HOME /usr/libexec/java_home
-        set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
+                # this is needed, otherwise darwin-rebuild wouldn't be in PATH
+                fish_add_path --prepend --global "$HOME/.nix-profile/bin" /nix/var/nix/profiles/default/bin /run/current-system/sw/bin
+                set PATH $PATH /etc/profiles/per-user/${config.home.username}/bin
+                set PATH $PATH /opt/homebrew/bin
+        	set PATH $PATH /opt/homebrew/opt/node@18/bin
+                set JAVA_HOME /usr/libexec/java_home
+                set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
       ''
     else
       ''
