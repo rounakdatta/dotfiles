@@ -179,13 +179,13 @@ in
     ''
     +
     (if isDarwin then
-    ''
-      tm_battery="#[fg=$base0F,bg=$base00] ♥ #(pmset -g batt | grep InternalBattery | awk '{print $3}' | sed 's/;$//')"
-    ''
+      ''
+        tm_battery="#[fg=$base0F,bg=$base00] ♥ #(pmset -g batt | grep InternalBattery | awk '{print $3}' | sed 's/;$//')"
+      ''
     else
-    ''
-      tm_battery="#[fg=$base0F,bg=$base00] ♥ #(acpi --battery | awk \'{gsub(\",\", \"\"); print \$4}\')"
-    ''
+      ''
+        tm_battery="#[fg=$base0F,bg=$base00] ♥ #(acpi --battery | awk \'{gsub(\",\", \"\"); print \$4}\')"
+      ''
     )
     +
     ''
