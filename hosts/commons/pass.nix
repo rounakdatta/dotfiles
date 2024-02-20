@@ -10,6 +10,8 @@
 
       # the following PATH addition is to make sure that binaries like `git`, `emacs`, `ssh` are available for use
       export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
+      # `ssh` is on the following path in darwin, so there we go
+      export PATH="/usr/bin:$PATH"
 
       git init
       if git remote | grep -q origin; then
