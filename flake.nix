@@ -38,7 +38,9 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.rounak = {
-              imports = [ ./hosts/ninezeroes/home.nix ];
+              imports = [
+                ./hosts/ninezeroes/home.nix
+              ];
               _module.args.self = self;
               _module.args.host = "ninezeroes";
               _module.args.inputs = inputs;
