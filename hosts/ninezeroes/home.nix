@@ -2,6 +2,7 @@
 
   imports = [
     ../../configs
+    ../commons/pass.nix
   ];
 
   home = {
