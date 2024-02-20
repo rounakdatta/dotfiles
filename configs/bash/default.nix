@@ -16,7 +16,6 @@ in
         export PATH="$PATH:/opt/homebrew/bin"
         export PATH="$PATH:/opt/homebrew/opt/node@18/bin"
         export JAVA_HOME=/usr/libexec/java_home
-        # TODO: verify if this is at all needed at all needed
         export PASSWORD_STORE_DIR="/Users/${config.home.username}/.password-store"
       ''
     else

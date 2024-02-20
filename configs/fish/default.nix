@@ -64,7 +64,6 @@ in
         set PATH $PATH /opt/homebrew/bin
         set PATH $PATH /opt/homebrew/opt/node@18/bin
         set JAVA_HOME /usr/libexec/java_home
-        # TODO: verify if this is at all needed at all needed
         set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
       ''
     else
