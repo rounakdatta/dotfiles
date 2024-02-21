@@ -23,8 +23,8 @@
       git fetch origin
       git pull origin master
 
-      gopass-jsonapi configure --browser chrome --global=false --path=${config.home.homeDirectory}/.config/gopass
-      gopass-jsonapi configure --browser firefox --global=false --path=${config.home.homeDirectory}/.config/gopass
+      echo "Y" | gopass-jsonapi configure --browser chrome --global=false --path=${config.home.homeDirectory}/.config/gopass
+      echo "Y" | gopass-jsonapi configure --browser firefox --global=false --path=${config.home.homeDirectory}/.config/gopass
     '';
   };
 }
