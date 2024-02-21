@@ -17,9 +17,11 @@
 
   homebrew = {
     enable = true;
+    # disabling quarantine would mean no stupid macOS do-you-really-want-to-open dialogs
     caskArgs.no_quarantine = true;
     onActivation = {
       autoUpdate = true;
+      # zap is a more thorough uninstall, ref: https://docs.brew.sh/Cask-Cookbook#stanza-zap
       cleanup = "zap";
       upgrade = true;
     };
