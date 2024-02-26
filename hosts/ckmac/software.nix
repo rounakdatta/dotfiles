@@ -78,6 +78,7 @@
       "sublime-text"
       "temurin17"
       "bitwarden"
+      "google-earth-pro"
     ];
 
     # `mas search <>` can help pinpoint package name
