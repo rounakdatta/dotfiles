@@ -14,6 +14,8 @@ in
       set PATH $GOPATH/bin $PATH
       set EDITOR nvim
       set SHELL /run/current-system/sw/bin/fish
+
+      set NIXPKGS_ALLOW_UNFREE 1
             
       # although we've set the NixOS-level setting, remember that Chrome would require this `TZ` envvar
       # otherwise, it defaults to UTC
@@ -52,8 +54,6 @@ in
       set -U fish_pager_color_progress      'brwhite' '--background=cyan'
     '' +
     ''
-      alias pbcopy="xsel --clipboard --input"
-      alias pbpaste="xsel --clipboard --output"
       alias vim="nvim"
     '' +
     (if isDarwin then

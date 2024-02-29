@@ -53,6 +53,11 @@
   };
 
   programs = {
+    htop = {
+      enable = true;
+      settings.color_scheme = 6;
+    };
+
     home-manager = {
       enable = true;
     };
