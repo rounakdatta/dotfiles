@@ -17,6 +17,7 @@ in
         export PATH="$PATH:/opt/homebrew/opt/node@18/bin"
         export JAVA_HOME=/usr/libexec/java_home
         export PASSWORD_STORE_DIR="/Users/${config.home.username}/.password-store"
+        export XDG_DATA_HOME=/run/current-system/sw/share/X11
       ''
     else
       ''

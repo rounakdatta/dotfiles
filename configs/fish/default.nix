@@ -14,6 +14,7 @@ in
       set PATH $GOPATH/bin $PATH
       set EDITOR nvim
       set SHELL /run/current-system/sw/bin/fish
+      set XDG_DATA_HOME /run/current-system/sw/share/X11
 
       set NIXPKGS_ALLOW_UNFREE 1
             

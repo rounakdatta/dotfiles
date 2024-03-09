@@ -161,7 +161,19 @@
       lohit-fonts.bengali
       google-fonts
       corefonts
+      inter
+      monaspace
     ];
+
+    fontDir = {
+      enable = true;
+    };
+
+    fontconfig = {
+      defaultFonts = {
+        monospace = [ "Monaspace Neon" ];
+      };
+    };
   };
 
   # temporary: as we learn more Nix, this config will find its right home
