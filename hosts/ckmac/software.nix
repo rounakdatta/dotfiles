@@ -79,6 +79,7 @@
       "temurin17"
       "bitwarden"
       "google-earth-pro"
+      "calibre"
     ];
 
     # `mas search <>` can help pinpoint package name
