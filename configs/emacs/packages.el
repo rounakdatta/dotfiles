@@ -50,3 +50,4 @@
 ;(unpin! t)
 
 (package! ob-mermaid)
+(package! exec-path-from-shell)
