@@ -31,7 +31,7 @@
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/personal/rounakdatta.github.io/")
 
-(setq projectile-project-search-path '("~/personal/" "~/hotstar/" "~/tooling/"))
+(setq projectile-project-search-path '("~/personal/"))
 
 ;; org-roam setting
 (setq org-roam-link-title-format "R:%s")
@@ -188,6 +188,14 @@ Output:
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
 (setq display-line-numbers-type t)
 
+;; Make sure to wrap output lines when in eshell
+(add-hook 'eshell-mode-hook
+	  (lambda ()
+	    (setq-local truncate-lines nil)))
+
+;; Unify eshell's PATH and your default shell's PATH
+(when (memq window-system '(mac ns x))
+  (exec-path-from-shell-initialize))
 
 ;; Here are some additional functions/macros that could help you configure Doom:
 ;;
