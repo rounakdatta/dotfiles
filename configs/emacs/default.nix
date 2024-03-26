@@ -33,11 +33,11 @@
       git pull origin master
 
       # the bash-subcommanding is done to avoid https://github.com/doomemacs/doomemacs/issues/4181#issuecomment-729741088
-      # bash -c "yes | $DOOM/bin/doom install"
+      bash -c "yes | $DOOM/bin/doom install"
       # unfortunately this step takes a lot of time, and Nix reports it as a timeout
       # as of now, this step has to be run manually externally in the very first-time setup
       # successive runs however should be fine
-      # $DOOM/bin/doom sync
+      $DOOM/bin/doom sync
     '';
   };
 }

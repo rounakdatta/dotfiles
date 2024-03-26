@@ -64,7 +64,6 @@ in
         set PATH $PATH /etc/profiles/per-user/${config.home.username}/bin
         set PATH $PATH /opt/homebrew/bin
         set PATH $PATH /opt/homebrew/opt/node@18/bin
-	set PATH $PATH /usr/local/texlive/2024basic/bin/universal-darwin
         set JAVA_HOME /usr/libexec/java_home
         set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
       ''
