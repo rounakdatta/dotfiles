@@ -48,6 +48,7 @@
       qutebrowser
       zoom-us
       nixpkgs-fmt
+      texliveFull
 
       # password store related packages
       gopass
