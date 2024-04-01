@@ -49,4 +49,11 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
+(unless (package-installed-p 'projectile)
+  (package-install 'projectile))
+
 (package! ob-mermaid)
+(package! exec-path-from-shell)
+
+;; this is required, otherwise only the script of the PDF would be shown
+(pdf-tools-install)

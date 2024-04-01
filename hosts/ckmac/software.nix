@@ -24,6 +24,7 @@
       # zap is a more thorough uninstall, ref: https://docs.brew.sh/Cask-Cookbook#stanza-zap
       cleanup = "zap";
       upgrade = true;
+      extraFlags = [ "--verbose" ];
     };
 
     # taps to open, let packages rain

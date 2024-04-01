@@ -35,6 +35,8 @@
       zoom-us
       nixpkgs-fmt
       gradle_7
+      texliveFull
+
 
       # kubernetes related packages
       kubernetes-helm
