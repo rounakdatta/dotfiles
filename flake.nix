@@ -60,6 +60,7 @@
             imports = [
               ./hosts/ckmac/configuration.nix
               ./hosts/ckmac/software.nix
+              ./hosts/ckmac/tooling.nix
             ];
             _module.args.self = self;
           }
