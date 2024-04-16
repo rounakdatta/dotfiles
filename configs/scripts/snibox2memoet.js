@@ -19,7 +19,7 @@ exec(userDirectorySetupCommand, (err) => {
     console.log(`Finished setting up the users data directory at ${destinationPath}!`);
 
 	// launch chrome instance with remote debugging port enabled (for puppeteer to connect)
-    const chromeLaunchCommand = `/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --headless=new --remote-debugging-port=${chromeDebuggingPort} --user-data-dir=${destinationPath}`;
+    const chromeLaunchCommand = `/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --headless=new --remote-debugging-port=${chromeDebuggingPort} --user-data-dir=${destinationPath}/Default`;
 
     console.log("Starting to launch Chrome instance...")
     exec(chromeLaunchCommand, (err) => {
