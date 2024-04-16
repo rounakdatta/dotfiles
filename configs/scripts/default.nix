@@ -8,7 +8,7 @@
       export PATH="$PATH:/opt/homebrew/opt/node@18/bin"
       echo $PATH
       which npm
-      npm install -g puppeteer-core
+      npm install -g puppeteer-core request
     '';
   };
 }
