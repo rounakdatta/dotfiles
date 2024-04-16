@@ -1,14 +1,16 @@
 const puppeteer = require('puppeteer-core');
 const { exec } = require('child_process');
 
-// Copy the user directory to a temporary directory
+// Copy the existing user directory to a temporary directory
+// (this is so that we preserve the cookies from our existing logged in session)
 const sourcePath = '~/Library/Application\\ Support/Google/Chrome/Default';
-const destinationPath = '/tmp/chromy';
+let randomSeedString = Math.random().toString(36).substring(2, 7)
+const destinationPath = `/tmp/chromy-${randomSeedString}`;
 const chromeDebuggingPort = 9222
 
 const userDirectorySetupCommand = `mkdir -p ${destinationPath}/Default; cp -R ${sourcePath} ${destinationPath}/Default`;
 
-console.log("Starting to copy user data directory...")
+console.log("Creating a temp directory and starting to copy user data directory...")
 exec(userDirectorySetupCommand, (err) => {
     if (err) {
         console.error(`User data directory copy command exec error: ${err}`);
@@ -44,9 +46,9 @@ exec(userDirectorySetupCommand, (err) => {
             page.close();
 
             await browser.close();
-            console.log("Disconnected from Chrome");
+            console.log("Job done, disconnected from Chrome");
         } catch (error) {
-            console.error(`Puppeteer interaction error: ${error}`);
+            console.error(`Interaction error with Chrome via Puppeteer: ${error}`);
         }
     }, 5000);
 });

@@ -1,7 +1,6 @@
 { config, pkgs, ... }: {
 
   home.file.".scripts/automata/snibox2memoet.js".text = builtins.readFile ./snibox2memoet.js;
-  home.file.".scripts/automata/snibox2memoet.sh".text = builtins.readFile ./snibox2memoet.sh;
 
   home.activation = {
     puppeteerSetup = ''
