@@ -36,7 +36,7 @@
       nixpkgs-fmt
       gradle_7
       texliveFull
-
+      hugo
 
       # kubernetes related packages
       kubernetes-helm
