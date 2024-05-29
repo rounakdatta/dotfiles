@@ -86,6 +86,7 @@
     # `mas search <>` can help pinpoint package name
     masApps = {
       "Tailscale" = 1475387142; # Tailscale does have a brew package, however this is slightly more complete
+      "Bandwidth+" = 490461369;
     };
   };
 }
