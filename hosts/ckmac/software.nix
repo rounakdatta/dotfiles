@@ -50,6 +50,8 @@
       "yarn" # the JS package manager, not the hadoop scheduler
       "azure-cli"
       "ollama"
+      "tree"
+      "terraform"
     ];
 
     casks = [
@@ -81,6 +83,7 @@
       "bitwarden"
       "google-earth-pro"
       "calibre"
+      "hiddenbar"
     ];
 
     # `mas search <>` can help pinpoint package name

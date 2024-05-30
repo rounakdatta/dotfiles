@@ -26,4 +26,12 @@
   system.activationScripts.postActivation.text = ''
     chsh -s /run/current-system/sw/bin/fish rounak
   '';
+
+  system.activationScripts.extraActivation.text = ''
+    # there's no going back from Apple Silicon
+    softwareupdate --install-rosetta --agree-to-license
+
+    # yes, we live up in the clouds
+    /opt/homebrew/bin/gcloud components install gke-gcloud-auth-plugin
+  '';
 }

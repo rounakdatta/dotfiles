@@ -56,4 +56,5 @@
 (package! exec-path-from-shell)
 
 ;; this is required, otherwise only the script of the PDF would be shown
-(pdf-tools-install)
+;; TODO: unfortunately this isn't working at the moment, and needs to be executed manually
+;; (pdf-tools-install)
