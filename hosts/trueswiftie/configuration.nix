@@ -8,7 +8,7 @@
 
   services.nix-daemon.enable = true;
 
-  networking.hostName = "ckmac";
+  networking.hostName = "trueswiftie";
 
   users.users.rounak = {
     # workaround for https://github.com/nix-community/home-manager/issues/4026
