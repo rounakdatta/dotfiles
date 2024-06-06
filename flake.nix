@@ -52,14 +52,14 @@
 
     # starting point of a user-level Nix installation on an aarch64 macOS system
     darwinConfigurations = {
-      ckmac = nix-darwin.lib.darwinSystem {
+      trueswiftie = nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         modules = [
           mac-app-util.darwinModules.default
           {
             imports = [
-              ./hosts/ckmac/configuration.nix
-              ./hosts/ckmac/software.nix
+              ./hosts/trueswiftie/configuration.nix
+              ./hosts/trueswiftie/software.nix
             ];
             _module.args.self = self;
           }
@@ -73,7 +73,7 @@
             home-manager.users.rounak = {
               imports = [
                 mac-app-util.homeManagerModules.default
-                ./hosts/ckmac/home.nix
+                ./hosts/trueswiftie/home.nix
               ];
             };
           }

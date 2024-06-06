@@ -8,7 +8,7 @@
 
   services.nix-daemon.enable = true;
 
-  networking.hostName = "ckmac";
+  networking.hostName = "trueswiftie";
 
   users.users.rounak = {
     # workaround for https://github.com/nix-community/home-manager/issues/4026
@@ -25,5 +25,13 @@
   # TODO: generalize the username here
   system.activationScripts.postActivation.text = ''
     chsh -s /run/current-system/sw/bin/fish rounak
+  '';
+
+  system.activationScripts.extraActivation.text = ''
+    # there's no going back from Apple Silicon
+    softwareupdate --install-rosetta --agree-to-license
+
+    # yes, we live up in the clouds
+    /opt/homebrew/bin/gcloud components install gke-gcloud-auth-plugin
   '';
 }
