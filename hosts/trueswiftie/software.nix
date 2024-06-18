@@ -52,6 +52,7 @@
       "ollama"
       "tree"
       "terraform"
+      "kubeseal"
     ];
 
     casks = [
@@ -69,7 +70,6 @@
       "firefox"
       "google-cloud-sdk"
       "gpg-suite"
-      "joshjon-nocturnal"
       "keka"
       "krita"
       "microsoft-office"
@@ -84,6 +84,7 @@
       "google-earth-pro"
       "calibre"
       "hiddenbar"
+      "chatgpt"
     ];
 
     # `mas search <>` can help pinpoint package name
