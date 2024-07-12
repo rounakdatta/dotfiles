@@ -53,6 +53,11 @@
       "tree"
       "terraform"
       "kubeseal"
+      {
+      	name = "syncthing";
+	start_service = true;
+	restart_service = "changed";
+      }
     ];
 
     casks = [
@@ -85,6 +90,8 @@
       "calibre"
       "hiddenbar"
       "chatgpt"
+      "obsidian"
+      "itsycal"
     ];
 
     # `mas search <>` can help pinpoint package name
