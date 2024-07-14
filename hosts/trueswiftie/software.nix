@@ -54,9 +54,9 @@
       "terraform"
       "kubeseal"
       {
-      	name = "syncthing";
-	start_service = true;
-	restart_service = "changed";
+        name = "syncthing";
+        start_service = true;
+        restart_service = "changed";
       }
     ];
 
