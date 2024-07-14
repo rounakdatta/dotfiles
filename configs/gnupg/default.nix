@@ -12,7 +12,8 @@ in
       enable = false;
     } else {
       enable = true;
-      pinentryFlavor = "gnome3";
+      pinentryPackage = pkgs.pinentry-gnome3;
       enableSshSupport = true;
     };
 }
+
