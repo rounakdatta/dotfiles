@@ -53,6 +53,7 @@
       "tree"
       "terraform"
       "kubeseal"
+      "wimlib"
       {
         name = "syncthing";
         start_service = true;
