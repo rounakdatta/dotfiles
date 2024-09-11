@@ -32,6 +32,7 @@
       "d12frosted/emacs-plus"
       "pulumi/tap"
       "homebrew/cask-versions"
+      "homebrew/services"
     ];
 
     # `brew list <>` can help pinpoint package name
@@ -53,12 +54,13 @@
       "tree"
       "terraform"
       "kubeseal"
-      "wimlib"
+      "wimlib" # required when dealing with Windows installation archives
       {
         name = "syncthing";
         start_service = true;
         restart_service = "changed";
       }
+      "go"
     ];
 
     casks = [
@@ -93,6 +95,8 @@
       "chatgpt"
       "obsidian"
       "itsycal"
+      "mongodb-compass"
+      "stremio"
     ];
 
     # `mas search <>` can help pinpoint package name
