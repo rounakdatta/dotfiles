@@ -97,6 +97,7 @@
       "itsycal"
       "mongodb-compass"
       "stremio"
+      "zoom"
     ];
 
     # `mas search <>` can help pinpoint package name

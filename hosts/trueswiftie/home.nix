@@ -32,7 +32,6 @@
       ffmpeg
       kotlin
       shellcheck
-      zoom-us
       nixpkgs-fmt
       gradle_7
       texliveFull
