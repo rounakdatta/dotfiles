@@ -73,14 +73,18 @@
   
       userName = "Rounak Datta";
       userEmail = "rounakdatta12@gmail.com";
-      signingKey = "A04E86FD28F5A421";
-  
+      signing = {
+      	key = "A04E86FD28F5A421";
+      };
+
       # Conditional configuration for ~/work directory
       extraConfig = {
         "includeIf.gitdir:~/work/" = {
           userName = "Rounak Datta";
           userEmail = "rounak@commandk.dev";
-          signingKey = "A04E86FD28F5A421";
+	  signing = {
+	    key = "A04E86FD28F5A421";
+          };
         };
       };
     };
