@@ -61,6 +61,7 @@
         restart_service = "changed";
       }
       "go"
+      "FairwindsOps/tap/rbac-lookup"
     ];
 
     casks = [
@@ -97,6 +98,8 @@
       "itsycal"
       "mongodb-compass"
       "stremio"
+      "zoom"
+      "mitmproxy"
     ];
 
     # `mas search <>` can help pinpoint package name
