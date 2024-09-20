@@ -33,6 +33,7 @@
       "pulumi/tap"
       "homebrew/cask-versions"
       "homebrew/services"
+      "FairwindsOps/tap"
     ];
 
     # `brew list <>` can help pinpoint package name
