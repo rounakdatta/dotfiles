@@ -34,6 +34,7 @@
       "homebrew/cask-versions"
       "homebrew/services"
       "FairwindsOps/tap"
+      "rajatjindal/tap"
     ];
 
     # `brew list <>` can help pinpoint package name
@@ -63,6 +64,12 @@
       }
       "go"
       "FairwindsOps/tap/rbac-lookup"
+      "eksctl"
+      "rajatjindal/tap/modify-secret"
+      "rga" # powerful tool like ripgrep, but within files, following 3 are nice-to-have complimentaries
+      "pandoc"
+      "poppler"
+      "ffmpeg"
     ];
 
     casks = [
@@ -101,6 +108,7 @@
       "stremio"
       "zoom"
       "mitmproxy"
+      "cursor" # when in the AI generation, do as the generationalists do
     ];
 
     # `mas search <>` can help pinpoint package name
