@@ -109,6 +109,8 @@
       "zoom"
       "mitmproxy"
       "cursor" # when in the AI generation, do as the generationalists do
+      "steam"
+      "crossover"
     ];
 
     # `mas search <>` can help pinpoint package name
