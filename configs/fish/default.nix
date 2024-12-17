@@ -76,6 +76,17 @@ in
       atuin init fish --disable-up-arrow | source
     ''
     ;
+    plugins = [
+      {
+        name = "nvm";
+        src = pkgs.fetchFromGitHub {
+          owner = "jorgebucaran";
+          repo = "nvm.fish";
+          rev = "c69e5d1017b21bcfca8f42c93c7e89fff6141a8a";
+          sha256 = "LV5NiHfg4JOrcjW7hAasUSukT43UBNXGPi1oZWPbnCA=";
+        };
+      }
+    ];
     functions = {
       fish_prompt = ''
         # special treatment just for nix-develop shells
