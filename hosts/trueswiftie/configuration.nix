@@ -6,6 +6,10 @@
     experimental-features = [ "nix-command" "flakes" ];
   };
 
+  nix.gc = {
+    automatic = true;
+  };
+
   services.nix-daemon.enable = true;
 
   networking.hostName = "trueswiftie";
