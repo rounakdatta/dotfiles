@@ -10,7 +10,10 @@
     # the goal here is to have the correct ordering, the `[user]` block should come first, and then the `[include]` block
     # was able to fix the ordering using https://www.reddit.com/r/NixOS/comments/jg4i92/comment/j08vf4n
     includes = [
-      { path = "~/.gitconfig.work"; }
+      {
+        path = "~/.gitconfig.work";
+        condition = "gitdir:~/work";
+      }
       { path = "~/.gitconfig.https"; }
     ];
     extraConfig = {
