@@ -11,10 +11,26 @@
     # was able to fix the ordering using https://www.reddit.com/r/NixOS/comments/jg4i92/comment/j08vf4n
     includes = [
       { path = "~/.gitconfig.work"; }
+      { path = "~/.gitconfig.https"; }
     ];
     extraConfig = {
       diff.external = "difft";
     };
+  };
+
+  home.activation = {
+    createTokenIncludedGitHubHttpsConfig = ''
+      export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
+      export PATH="/usr/bin:$PATH"
+
+      GITCONFIG_HTTPS_FILE=${config.home.homeDirectory}/.gitconfig.https
+      GH_PAT=$(gopass show github.com/pat)
+
+      cat > "$GITCONFIG_HTTPS_FILE" <<EOF
+      [url "https://rounakdatta:$GH_PAT@github.com/"]
+        insteadOf = https://github.com/
+      EOF
+    '';
   };
 
   home.file.".gitconfig.work".text = builtins.readFile ./gitconfig.work;
