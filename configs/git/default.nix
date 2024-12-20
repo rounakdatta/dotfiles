@@ -43,8 +43,6 @@
       EOF
     '';
   };
-
-  home.file.".gitconfig.work".text = builtins.readFile ./gitconfig.work;
 }
 
 # note how the same key is used across both personal and work accounts
