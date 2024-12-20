@@ -1,8 +1,7 @@
 { pkgs, ... }: {
+  system.stateVersion = 5;
 
   environment = {
-    loginShell = pkgs.fish;
-
     # this is so that fish gets added to /etc/shells
     shells = [
       pkgs.fish
@@ -70,6 +69,9 @@
       "pandoc"
       "poppler"
       "ffmpeg"
+      "colima" # lightweight container runtime
+      "qemu" # this is required for multi-arch container builds
+      "git-delta"
     ];
 
     casks = [
@@ -111,6 +113,7 @@
       "cursor" # when in the AI generation, do as the generationalists do
       "steam"
       "crossover"
+      "jdownloader"
     ];
 
     # `mas search <>` can help pinpoint package name

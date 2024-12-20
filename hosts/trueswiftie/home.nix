@@ -35,7 +35,7 @@
       nixpkgs-fmt
       gradle_7
       texliveFull
-
+      pyenv
 
       # kubernetes related packages
       kubernetes-helm

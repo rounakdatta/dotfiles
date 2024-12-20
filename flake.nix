@@ -68,6 +68,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             users.users.rounak = {
+              ignoreShellProgramCheck = true;
               home = "/Users/rounak";
             };
             home-manager.users.rounak = {
