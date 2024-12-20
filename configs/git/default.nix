@@ -11,8 +11,14 @@
     # was able to fix the ordering using https://www.reddit.com/r/NixOS/comments/jg4i92/comment/j08vf4n
     includes = [
       {
-        path = "~/.gitconfig.work";
-        condition = "gitdir:~/work";
+        condition = "gitdir:~/work/";
+        contents = {
+          user = {
+          name = "Rounak Datta";
+          email = "rounak@lyric.tech";
+          signingKey = "A04E86FD28F5A421";
+          };
+        };
       }
       { path = "~/.gitconfig.https"; }
     ];
@@ -21,6 +27,8 @@
     };
   };
 
+  # TODO: Beware! As long as this activation is there, changes made above will not take effect
+  # you gotta comment the following section out to make changes above take effect
   home.activation = {
     createTokenIncludedGitHubHttpsConfig = ''
       export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
