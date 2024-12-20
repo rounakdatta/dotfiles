@@ -14,9 +14,9 @@
         condition = "gitdir:~/work/";
         contents = {
           user = {
-          name = "Rounak Datta";
-          email = "rounak@lyric.tech";
-          signingKey = "A04E86FD28F5A421";
+            name = "Rounak Datta";
+            email = "rounak@lyric.tech";
+            signingKey = "A04E86FD28F5A421";
           };
         };
       }
