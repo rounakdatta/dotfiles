@@ -105,6 +105,7 @@
       "cursor" # when in the AI generation, do as the generationalists do
       "steam"
       "jdownloader"
+      "cursor-cli"
     ];
 
     # `mas search <>` can help pinpoint package name

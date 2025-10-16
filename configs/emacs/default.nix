@@ -7,7 +7,7 @@
   home.file.".doom.d/config.el".text = builtins.readFile ./config.el;
   home.file.".doom.d/packages.el".text = builtins.readFile ./packages.el;
 
-  # Doom Emacs setup - made idempotent and non-interactive for stable rebuilds
+  # Doom Emacs setup is now idempotent and non-interactive for stable rebuilds
   # https://github.com/doomemacs/doomemacs/issues/5918#issuecomment-1028588770
   home.activation = {
     doomEmacs = ''
