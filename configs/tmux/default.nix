@@ -177,9 +177,13 @@ in
       tm_session_name="#[default,bg=$base00,fg=$base0E] #S "
       set -g status-left "$tm_session_name"
 
-      # kubernetes context/namespace indicator
-      set -g @kube_indicator "off"
-      kube_status="#[fg=#326CE5,bg=$base00] ⎈ #(kubectl config current-context | awk -F'[/:_]' '{print $NF}')"
+      # kubernetes context/namespace indicator (per-window toggle)
+      # Toggle with: Prefix + K
+      set -g @kube_indicator "on"
+      kube_status="#{?#{==:#{@kube_indicator},on},#[fg=#326CE5,bg=$base00] ⎈ #(kubectl config current-context | awk -F'[/:_]' '{print $NF}') ( #(sh -lc 'ns=$(kubectl config view --minify --output "jsonpath={..namespace}"); if [ -z "$ns" ]; then echo default; else echo "$ns"; fi') ),}"
+
+      # Keybinding to toggle kube indicator for the current window
+      bind K if -F '#{==:#{@kube_indicator},on}' 'set -w @kube_indicator off \; display "Kube indicator OFF for window #I"' 'set -w @kube_indicator on \; display "Kube indicator ON for window #I"'
     ''
     +
     (if isDarwin then
