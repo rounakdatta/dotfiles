@@ -11,7 +11,6 @@
       zip
       unzip
       tmux
-      spotify
       sqlite
       ripgrep
       openssl
@@ -30,12 +29,11 @@
       wget
       dive
       ffmpeg
-      kotlin
       shellcheck
       nixpkgs-fmt
-      gradle_7
       texliveFull
       pyenv
+      poppler
 
       # kubernetes related packages
       kubernetes-helm
@@ -50,6 +48,9 @@
       xsel
       # getting currently playing media information
       # playerctl
+
+      # coding will never be the same again
+      claude-code
     ];
   };
 

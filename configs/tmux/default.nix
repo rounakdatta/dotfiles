@@ -176,6 +176,10 @@ in
 
       tm_session_name="#[default,bg=$base00,fg=$base0E] #S "
       set -g status-left "$tm_session_name"
+
+      # kubernetes context/namespace indicator
+      set -g @kube_indicator "off"
+      kube_status="#[fg=#326CE5,bg=$base00] ⎈ #(kubectl config current-context | awk -F'[/:_]' '{print $NF}')"
     ''
     +
     (if isDarwin then
@@ -191,7 +195,7 @@ in
     ''
       tm_date="#[default,bg=$base00,fg=$base0C] %I:%M %p %Z"
       tm_host="#[fg=$base0E,bg=$base00] #h "
-      set -g status-right "$tm_tunes $tm_battery $tm_date $tm_host"
+      set -g status-right "$kube_status $tm_tunes $tm_battery $tm_date $tm_host"
     '';
   };
 }

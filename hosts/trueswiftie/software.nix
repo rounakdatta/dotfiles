@@ -11,6 +11,7 @@
     systemPackages = with pkgs; [
       fish
       kitty
+      coreutils # GNU coreutils for home-manager (provides readlink -e)
     ];
   };
 
@@ -20,41 +21,35 @@
     caskArgs.no_quarantine = true;
     onActivation = {
       autoUpdate = true;
-      # zap is a more thorough uninstall, ref: https://docs.brew.sh/Cask-Cookbook#stanza-zap
-      cleanup = "zap";
+      # uninstall: removes packages not listed in the config (without requiring Full Disk Access)
+      # zap: more aggressive cleanup but requires Full Disk Access permissions
+      cleanup = "uninstall";
       upgrade = true;
       extraFlags = [ "--verbose" ];
     };
 
     # taps to open, let packages rain
     taps = [
-      "d12frosted/emacs-plus"
-      "pulumi/tap"
       "homebrew/cask-versions"
       "homebrew/services"
       "FairwindsOps/tap"
       "rajatjindal/tap"
+      "metalbear-co/mirrord"
     ];
 
     # `brew list <>` can help pinpoint package name
     # for both ordinary packages and casks
     brews = [
-      "fish"
+      # fish removed - managed by Nix
       "curl"
       "awscli"
-      "d12frosted/emacs-plus/emacs-plus"
       "mas"
       "pinentry-mac"
-      "pulumi/tap/pulumi"
-      "skaffold"
       "watch"
       "node@18"
       "yarn" # the JS package manager, not the hadoop scheduler
       "azure-cli"
-      "ollama"
       "tree"
-      "terraform"
-      "kubeseal"
       "wimlib" # required when dealing with Windows installation archives
       {
         name = "syncthing";
@@ -65,13 +60,15 @@
       "FairwindsOps/tap/rbac-lookup"
       "eksctl"
       "rajatjindal/tap/modify-secret"
-      "rga" # powerful tool like ripgrep, but within files, following 3 are nice-to-have complimentaries
-      "pandoc"
-      "poppler"
-      "ffmpeg"
+      "rga" # powerful tool like ripgrep, but within files
       "colima" # lightweight container runtime
       "qemu" # this is required for multi-arch container builds
       "git-delta"
+      "kubectl"
+      "asciinema"
+      "azcopy"
+      "gemini-cli"
+      "metalbear-co/mirrord/mirrord"
     ];
 
     casks = [
@@ -94,25 +91,19 @@
       "microsoft-office"
       "postman"
       "scroll-reverser"
-      "send-to-kindle"
       "slack"
       "spotify"
       "sublime-text"
-      "temurin17"
       "bitwarden"
       "google-earth-pro"
       "calibre"
       "hiddenbar"
-      "chatgpt"
       "obsidian"
-      "itsycal"
       "mongodb-compass"
       "stremio"
       "zoom"
-      "mitmproxy"
       "cursor" # when in the AI generation, do as the generationalists do
       "steam"
-      "crossover"
       "jdownloader"
     ];
 
