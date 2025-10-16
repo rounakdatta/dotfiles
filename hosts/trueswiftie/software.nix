@@ -11,7 +11,6 @@
     systemPackages = with pkgs; [
       fish
       kitty
-      coreutils # GNU coreutils for home-manager (provides readlink -e)
     ];
   };
 
@@ -40,7 +39,8 @@
     # `brew list <>` can help pinpoint package name
     # for both ordinary packages and casks
     brews = [
-      # fish removed - managed by Nix
+      "coreutils"
+      "findutils"
       "curl"
       "awscli"
       "mas"

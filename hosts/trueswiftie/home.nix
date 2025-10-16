@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ pkgs, lib, ... }: {
 
   imports = [
     ../../configs
@@ -8,6 +8,7 @@
     stateVersion = "23.05";
 
     packages = with pkgs; [
+      coreutils
       zip
       unzip
       tmux
@@ -53,6 +54,25 @@
       claude-code
     ];
   };
+
+  # Ensure GNU coreutils (readlink -e) is used during Home Manager activation
+  home.activation.prependCoreutils = lib.hm.dag.entryBefore [ "linkGeneration" ] ''
+    export PATH=${pkgs.coreutils}/bin:$PATH
+  '';
+
+  # Ensure scripts that call `find -printf` get GNU find on macOS
+  home.activation.prependGNUFind = lib.hm.dag.entryBefore [ "linkGeneration" ] ''
+    export PATH=${pkgs.writeShellScriptBin "find" ''
+      exec /opt/homebrew/bin/gfind "$@"
+    ''}/bin:$PATH
+  '';
+
+  # Ensure scripts that call `readlink -e` get GNU readlink on macOS
+  home.activation.prependGNUReadlink = lib.hm.dag.entryBefore [ "linkGeneration" ] ''
+    export PATH=${pkgs.writeShellScriptBin "readlink" ''
+      exec /opt/homebrew/bin/greadlink "$@"
+    ''}/bin:$PATH
+  '';
 
   programs = {
     htop = {
