@@ -98,6 +98,9 @@ in
       bind -r K resize-pane -U 10
       bind -r L resize-pane -R 10
 
+      # Toggle kube status display for current window (Prefix + 8)
+      bind 8 if-shell -F "#{@kube-status}" "set-window-option -u @kube-status" "set-window-option @kube-status 1"
+
       # enable mouse support for switching panes/windows
       setw -g mouse on
 
@@ -176,14 +179,6 @@ in
 
       tm_session_name="#[default,bg=$base00,fg=$base0E] #S "
       set -g status-left "$tm_session_name"
-
-      # kubernetes context/namespace indicator (per-window toggle)
-      # Toggle with: Prefix + K
-      set -g @kube_indicator "on"
-      kube_status="#{?#{==:#{@kube_indicator},on},#[fg=#326CE5,bg=$base00] ⎈ #(kubectl config current-context | awk -F'[/:_]' '{print $NF}') ( #(sh -lc 'ns=$(kubectl config view --minify --output "jsonpath={..namespace}"); if [ -z "$ns" ]; then echo default; else echo "$ns"; fi') ),}"
-
-      # Keybinding to toggle kube indicator for the current window
-      bind K if -F '#{==:#{@kube_indicator},on}' 'set -w @kube_indicator off \; display "Kube indicator OFF for window #I"' 'set -w @kube_indicator on \; display "Kube indicator ON for window #I"'
     ''
     +
     (if isDarwin then
@@ -199,7 +194,8 @@ in
     ''
       tm_date="#[default,bg=$base00,fg=$base0C] %I:%M %p %Z"
       tm_host="#[fg=$base0E,bg=$base00] #h "
-      set -g status-right "$kube_status $tm_tunes $tm_battery $tm_date $tm_host"
+      tm_kube_status="#[fg=$base0D,bg=$base00]#{?@kube-status, #(command -v kubectl >/dev/null 2>&1 && kubectl config current-context 2>/dev/null | sed 's/^/⎈ /'),}"
+      set -g status-right "$tm_tunes $tm_kube_status $tm_battery $tm_date $tm_host"
     '';
   };
 }
