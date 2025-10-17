@@ -11,5 +11,6 @@
     ./gopass
     ./nextcloud
     ./emacs
+    ./claude
   ];
 }
