@@ -4,33 +4,56 @@
     vimAlias = true;
     
     plugins = with pkgs.vimPlugins; [
-      plenary-nvim
       {
         plugin = pkgs.vimUtils.buildVimPlugin {
-          name = "claude-code.nvim";
+          name = "copilot.lua";
           src = pkgs.fetchFromGitHub {
-            owner = "greggh";
-            repo = "claude-code.nvim";
-            rev = "main";
-            sha256 = "sha256-0crfj852lwif5gipckb3hzagrvjccl6jg7xghs02d0v1vjx0yhk4";
+            owner = "zbirenbaum";
+            repo = "copilot.lua";
+            rev = "master";
+            sha256 = "sha256-Jw4Q76FolG3F/AN7WZn/mNNde/21uAJ+yqESmOlyNww=";
           };
         };
-        type = "lua";
         config = ''
-          require("claude-code").setup({
-            -- Optional: Configure window settings
-            window = {
-              relative = "editor",
-              width = 0.8,
-              height = 0.8,
-              border = "rounded",
+          lua << EOF
+          require('copilot').setup({
+            suggestion = {
+              enabled = true,
+              auto_trigger = true,
+              debounce = 75,
+              keymap = {
+                accept = "<C-j>",
+                accept_word = false,
+                accept_line = false,
+                next = "<M-]>",
+                prev = "<M-[>",
+                dismiss = "<C-]>",
+              },
+            },
+            panel = {
+              enabled = true,
+              auto_refresh = false,
+              keymap = {
+                jump_prev = "[[",
+                jump_next = "]]",
+                accept = "<CR>",
+                refresh = "gr",
+                open = "<M-CR>"
+              },
+            },
+            filetypes = {
+              yaml = true,
+              markdown = true,
+              help = true,
+              gitcommit = true,
+              gitrebase = true,
+              hgcommit = true,
+              svn = true,
+              cvs = true,
+              ["."] = true,
             },
           })
-          
-          -- Key mappings
-          vim.keymap.set('n', '<C-,>', ':ClaudeCode<CR>', { noremap = true, silent = true })
-          vim.keymap.set('n', '<leader>cC', ':ClaudeCodeContinue<CR>', { noremap = true, silent = true })
-          vim.keymap.set('n', '<leader>cV', ':ClaudeCodeVerbose<CR>', { noremap = true, silent = true })
+          EOF
         '';
       }
     ];
