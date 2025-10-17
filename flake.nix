@@ -67,6 +67,8 @@
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
+            # Automatically backup conflicting files with .backup extension
+            home-manager.backupFileExtension = "backup";
             users.users.rounak = {
               ignoreShellProgramCheck = true;
               home = "/Users/rounak";

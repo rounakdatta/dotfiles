@@ -1,21 +1,38 @@
 { config, pkgs, ... }: {
   programs.ssh = {
     enable = true;
-    extraConfig = ''
-      Host github.com
-      Preferredauthentications publickey
-      User rounakdatta
-      IdentityFile ~/.ssh/keys/personal.pem
+    # Explicitly disable default config to silence deprecation warning
+    enableDefaultConfig = false;
 
-      Host gitlab.com
-      Preferredauthentications publickey
-      User rounakdatta
-      IdentityFile ~/.ssh/keys/personal.pem
+    matchBlocks = {
+      # Default config for all hosts
+      "*" = {
+        # Add any default SSH settings you want here
+      };
 
-      Host jomjom
-      Preferredauthentications publickey
-      User root
-      IdentityFile ~/.ssh/keys/personal.pem
-    '';
+      "github.com" = {
+        user = "rounakdatta";
+        identityFile = "~/.ssh/keys/personal.pem";
+        extraOptions = {
+          PreferredAuthentications = "publickey";
+        };
+      };
+
+      "gitlab.com" = {
+        user = "rounakdatta";
+        identityFile = "~/.ssh/keys/personal.pem";
+        extraOptions = {
+          PreferredAuthentications = "publickey";
+        };
+      };
+
+      "jomjom" = {
+        user = "root";
+        identityFile = "~/.ssh/keys/personal.pem";
+        extraOptions = {
+          PreferredAuthentications = "publickey";
+        };
+      };
+    };
   };
 }
