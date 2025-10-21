@@ -2,6 +2,7 @@
 
   imports = [
     ../../configs
+    ./npm-packages.nix
   ];
 
   home = {

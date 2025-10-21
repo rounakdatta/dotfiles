@@ -69,6 +69,9 @@
       "azcopy"
       "gemini-cli"
       "metalbear-co/mirrord/mirrord"
+      "yt-dlp"
+      "asitop"
+      "glances"
     ];
 
     casks = [
