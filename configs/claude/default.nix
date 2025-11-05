@@ -1,4 +1,8 @@
-{ config, pkgs, lib, ... }:
+{ config
+, pkgs
+, lib
+, ...
+}:
 let
   # Claude Code settings as a Nix attrset for better maintainability
   claudeSettings = {
@@ -19,7 +23,7 @@ let
           "--extension"
         ];
         env = {
-	  # I think this is ok to be pubic, it's local to my browser anyway
+          # I think this is ok to be pubic, it's local to my browser anyway
           PLAYWRIGHT_MCP_EXTENSION_TOKEN = "wASkRXZOFCIn7QoeT2KiO7e8hj7dEV7I-K7vfl4gLjU";
         };
       };
