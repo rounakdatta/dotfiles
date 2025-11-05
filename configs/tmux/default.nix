@@ -98,8 +98,9 @@ in
       bind -r K resize-pane -U 10
       bind -r L resize-pane -R 10
 
-      # Toggle kube status display for current window (Prefix + 8)
-      bind 8 if-shell -F "#{@kube-status}" "set-window-option -u @kube-status" "set-window-option @kube-status 1"
+      # Toggle kube status display for current window (Ctrl+k 8, like k8s!)
+      bind -n C-k switch-client -T k8s-prefix
+      bind -T k8s-prefix 8 if-shell -F "#{@kube-status}" "set-window-option -u @kube-status" "set-window-option @kube-status 1"
 
       # enable mouse support for switching panes/windows
       setw -g mouse on
@@ -108,28 +109,27 @@ in
       setw -g set-clipboard off
       setw -g mode-keys vi
     ''
-    +
-    (if isDarwin then
-      ''
-        bind-key -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "pbcopy"
-        bind-key -n -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "pbcopy"
+    + (
+      if isDarwin then
+        ''
+          bind-key -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "pbcopy"
+          bind-key -n -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "pbcopy"
 
-        # Buffers to/from clipboard
-        bind C-c run "tmux save-buffer - | reattach-to-user-namespace pbcopy"
-        bind C-v run "tmux set-buffer (reattach-to-user-namespace pbpaste); tmux paste-buffer"
-      ''
-    else
-      ''
-        bind-key -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "xsel --clipboard --input"
-        bind-key -n -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "xsel --clipboard --input"
+          # Buffers to/from clipboard
+          bind C-c run "tmux save-buffer - | reattach-to-user-namespace pbcopy"
+          bind C-v run "tmux set-buffer (reattach-to-user-namespace pbpaste); tmux paste-buffer"
+        ''
+      else
+        ''
+          bind-key -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "xsel --clipboard --input"
+          bind-key -n -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel "xsel --clipboard --input"
 
-        # Buffers to/from clipboard
-        bind C-c run "tmux save-buffer - | reattach-to-user-namespace xsel --clipboard --input"
-        bind C-v run "tmux set-buffer (reattach-to-user-namespace $(xsel --clipboard --output)); tmux paste-buffer"
-      ''
+          # Buffers to/from clipboard
+          bind C-c run "tmux save-buffer - | reattach-to-user-namespace xsel --clipboard --input"
+          bind C-v run "tmux set-buffer (reattach-to-user-namespace $(xsel --clipboard --output)); tmux paste-buffer"
+        ''
     )
-    +
-    ''
+    + ''
       # Base16 Styling Guidelines:
 
       base00=default   # - Default
@@ -180,18 +180,17 @@ in
       tm_session_name="#[default,bg=$base00,fg=$base0E] #S "
       set -g status-left "$tm_session_name"
     ''
-    +
-    (if isDarwin then
-      ''
-        tm_battery="#[fg=$base0F,bg=$base00] ♥ #(pmset -g batt | grep InternalBattery | awk '{print $3}' | sed 's/;$//')"
-      ''
-    else
-      ''
-        tm_battery="#[fg=$base0F,bg=$base00] ♥ #(acpi --battery | awk \'{gsub(\",\", \"\"); print \$4}\')"
-      ''
+    + (
+      if isDarwin then
+        ''
+          tm_battery="#[fg=$base0F,bg=$base00] ♥ #(pmset -g batt | grep InternalBattery | awk '{print $3}' | sed 's/;$//')"
+        ''
+      else
+        ''
+          tm_battery="#[fg=$base0F,bg=$base00] ♥ #(acpi --battery | awk \'{gsub(\",\", \"\"); print \$4}\')"
+        ''
     )
-    +
-    ''
+    + ''
       tm_date="#[default,bg=$base00,fg=$base0C] %I:%M %p %Z"
       tm_host="#[fg=$base0E,bg=$base00] #h "
       tm_kube_status="#[fg=$base0D,bg=$base00]#{?@kube-status, #(command -v kubectl >/dev/null 2>&1 && kubectl config current-context 2>/dev/null | sed 's/^/⎈ /'),}"

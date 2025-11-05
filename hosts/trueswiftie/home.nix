@@ -1,4 +1,5 @@
-{ pkgs, lib, ... }: {
+{ pkgs, lib, ... }:
+{
 
   imports = [
     ../../configs
@@ -35,10 +36,16 @@
       texliveFull
       pyenv
       poppler
+      # nix tooling, mostly for LSP stuff, requested by Zed
+      nixd
+      nil
 
       # kubernetes related packages
       kubernetes-helm
       kind
+      k9s
+
+      ansible
 
       # password store related packages
       gopass
@@ -89,4 +96,3 @@
     };
   };
 }
-
