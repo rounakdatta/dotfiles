@@ -106,6 +106,7 @@
       "steam"
       "jdownloader"
       "cursor-cli"
+      "zed"
     ];
 
     # `mas search <>` can help pinpoint package name

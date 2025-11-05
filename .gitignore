@@ -1,0 +1,9 @@
+# Nix build outputs
+result
+result-*
+
+# Application uploads (seems to be generated)
+app_uploads/
+
+# Logs
+logs/
