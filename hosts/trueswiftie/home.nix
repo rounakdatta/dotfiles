@@ -57,8 +57,8 @@
       # getting currently playing media information
       # playerctl
 
-      # coding will never be the same again
-      claude-code
+      # npm global packages (adhere to the prefix structure)
+      nodePackages.bitwarden-cli
     ];
   };
 
