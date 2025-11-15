@@ -1,4 +1,5 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   system.stateVersion = 5;
 
   environment = {
@@ -69,6 +70,7 @@
       "azcopy"
       "gemini-cli"
       "metalbear-co/mirrord/mirrord"
+      "opencode"
     ];
 
     casks = [
@@ -105,8 +107,11 @@
       "cursor" # when in the AI generation, do as the generationalists do
       "steam"
       "jdownloader"
+      # coding will never be the same again
       "cursor-cli"
       "zed"
+      "claude-code"
+      "codex"
     ];
 
     # `mas search <>` can help pinpoint package name
