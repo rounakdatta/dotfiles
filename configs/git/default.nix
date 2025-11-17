@@ -3,8 +3,6 @@
 let
   inherit (lib) mkEnableOption mkIf;
 
-  cfg = config.programs.git;
-
   # a helper function to make it easy to define git aliases
   mkAlias = name: value:
     let
@@ -19,13 +17,8 @@ let
     };
 in
 {
-  options.programs.git = {
-    enable = mkEnableOption "git";
-  };
-
-  config = mkIf cfg.enable {
+  config = mkIf config.programs.git.enable {
     programs.git = {
-      enable = true;
       userEmail = user.email;
       userName = user.name;
       signing = {
