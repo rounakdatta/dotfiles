@@ -32,24 +32,15 @@
     nixosConfigurations = {
       ninezeroes = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
+        specialArgs = { inherit inputs self user; };
         modules = [
-          {
-            imports = [ ./hosts/ninezeroes/configuration.nix ];
-            _module.args.self = self;
-            _module.args.user = user;
-          }
+          ./hosts/ninezeroes/configuration.nix
           home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.${user.username} = {
-              imports = [
-                ./hosts/ninezeroes/home.nix
-              ];
-              _module.args.self = self;
-              _module.args.host = "ninezeroes";
-              _module.args.inputs = inputs;
-              _module.args.user = user;
+              imports = [ ./hosts/ninezeroes/home.nix ];
             };
           }
         ];
@@ -60,32 +51,22 @@
     darwinConfigurations = {
       trueswiftie = nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
+        specialArgs = { inherit inputs self user; };
         modules = [
           mac-app-util.darwinModules.default
-          {
-            imports = [
-              ./hosts/trueswiftie/configuration.nix
-              ./hosts/trueswiftie/software.nix
-            ];
-            _module.args.self = self;
-            _module.args.user = user;
-          }
+          ./hosts/trueswiftie/configuration.nix
+          ./hosts/trueswiftie/software.nix
           home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             # Automatically backup conflicting files with .backup extension
             home-manager.backupFileExtension = "backup";
-            users.users.${user.username} = {
-              ignoreShellProgramCheck = true;
-              home = "/Users/${user.username}";
-            };
             home-manager.users.${user.username} = {
               imports = [
                 mac-app-util.homeManagerModules.default
                 ./hosts/trueswiftie/home.nix
               ];
-              _module.args.user = user;
             };
           }
         ];
