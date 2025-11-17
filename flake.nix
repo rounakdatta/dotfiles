@@ -23,7 +23,11 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, nix-darwin, mac-app-util, ... } @ inputs: {
+  outputs = { self, nixpkgs, home-manager, nix-darwin, mac-app-util, ... } @ inputs:
+  let
+    user = import ./lib/user.nix;
+  in
+  {
     # starting point of an x86_64 NixOS installation
     nixosConfigurations = {
       ninezeroes = nixpkgs.lib.nixosSystem {
@@ -32,18 +36,20 @@
           {
             imports = [ ./hosts/ninezeroes/configuration.nix ];
             _module.args.self = self;
+            _module.args.user = user;
           }
           home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
-            home-manager.users.rounak = {
+            home-manager.users.${user.username} = {
               imports = [
                 ./hosts/ninezeroes/home.nix
               ];
               _module.args.self = self;
               _module.args.host = "ninezeroes";
               _module.args.inputs = inputs;
+              _module.args.user = user;
             };
           }
         ];
@@ -62,6 +68,7 @@
               ./hosts/trueswiftie/software.nix
             ];
             _module.args.self = self;
+            _module.args.user = user;
           }
           home-manager.darwinModules.home-manager
           {
@@ -69,21 +76,29 @@
             home-manager.useUserPackages = true;
             # Automatically backup conflicting files with .backup extension
             home-manager.backupFileExtension = "backup";
-            users.users.rounak = {
+            users.users.${user.username} = {
               ignoreShellProgramCheck = true;
-              home = "/Users/rounak";
+              home = "/Users/${user.username}";
             };
-            home-manager.users.rounak = {
+            home-manager.users.${user.username} = {
               imports = [
                 mac-app-util.homeManagerModules.default
                 ./hosts/trueswiftie/home.nix
               ];
+              _module.args.user = user;
             };
           }
         ];
       };
     };
 
+    checks = {
+      x86_64-linux = {
+        nixos = self.nixosConfigurations.ninezeroes.config.system.build.toplevel;
+      };
+      aarch64-darwin = {
+        darwin = self.darwinConfigurations.trueswiftie.system;
+      };
+    };
   };
-
 }

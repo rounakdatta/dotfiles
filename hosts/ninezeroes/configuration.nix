@@ -101,9 +101,9 @@
   # services.xserver.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.rounak = {
+  users.users.${user.username} = {
     isNormalUser = true;
-    description = "Rounak";
+    description = user.name;
     extraGroups = [ "networkmanager" "wheel" "docker" ];
     packages = with pkgs; [
       firefox
