@@ -112,6 +112,7 @@
       "zed"
       "claude-code"
       "codex"
+      "antigravity"
     ];
 
     # `mas search <>` can help pinpoint package name

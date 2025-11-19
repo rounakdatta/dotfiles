@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, user, ... }:
 {
 
   imports = [
@@ -82,6 +82,10 @@
   '';
 
   programs = {
+    fish = {
+      enable = true;
+    };
+
     htop = {
       enable = true;
       settings.color_scheme = 6;

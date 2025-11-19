@@ -1,4 +1,4 @@
-{ inputs, config, pkgs, lib, ... }:
+{ inputs, config, pkgs, lib, user, ... }:
 
 {
   nix.settings = {
@@ -17,17 +17,18 @@
   ids.gids.nixbld = 30000;
 
   # Set primary user for Homebrew and other user-specific options
-  system.primaryUser = "rounak";
+  system.primaryUser = user.username;
 
   networking.hostName = "trueswiftie";
 
-  users.users.rounak = {
+  users.users.${user.username} = {
     # workaround for https://github.com/nix-community/home-manager/issues/4026
-    home = "/Users/rounak";
+    home = "/Users/${user.username}";
     packages = with pkgs; [
       git
     ];
     shell = pkgs.fish;
+    ignoreShellProgramCheck = true;
   };
 
   # Allow unfree packages
@@ -40,7 +41,7 @@
 
   # TODO: generalize the username here
   system.activationScripts.postActivation.text = ''
-    chsh -s /run/current-system/sw/bin/fish rounak
+    chsh -s /run/current-system/sw/bin/fish ${user.username}
   '';
 
   system.activationScripts.extraActivation.text = ''
