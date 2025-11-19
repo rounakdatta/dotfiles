@@ -1,4 +1,4 @@
-name: Nix CI
+name: Validate if the Nix setup is correctly formatted and builds
 on: [push]
 jobs:
   check-if-formatted:
