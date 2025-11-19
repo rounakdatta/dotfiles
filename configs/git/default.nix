@@ -1,10 +1,14 @@
-{ config, pkgs, ... }: {
+{ config, pkgs, ... }:
+let
+  user = import ../../lib/user.nix;
+in
+{
   programs.git = {
     enable = true;
-    userEmail = "rounakdatta12@gmail.com";
+    userEmail = user.email;
     userName = "Rounak Datta";
     signing = {
-      key = "A04E86FD28F5A421";
+      key = user.gpgKey;
       signByDefault = true;
     };
     # the goal here is to have the correct ordering, the `[user]` block should come first, and then the `[include]` block
@@ -44,3 +48,12 @@
     '';
   };
 }
+
+# note how the same key is used across both personal and work accounts
+# to know the key ID
+# gpg --list-secret-keys --keyid-format LONG
+# gpg --edit-key <>
+# adduid
+# blah-blah-blah
+# save
+

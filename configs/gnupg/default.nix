@@ -9,7 +9,7 @@ in
 
   services.gpg-agent = {
     enable = true;
-    pinentryPackage = if isDarwin then pkgs.pinentry_mac else pkgs.pinentry-gnome3;
+    pinentry.package = if isDarwin then pkgs.pinentry_mac else pkgs.pinentry-gnome3;
     enableSshSupport = !isDarwin;
   };
 }
