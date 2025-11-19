@@ -10,7 +10,7 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
     - uses: cachix/cachix-action@v15
       with:
-        name: dotfiles-ci
+        name: rounakdatta
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Check format
       run: nix-shell -p nixpkgs-fmt --run 'nixpkgs-fmt --check .'
