@@ -15,8 +15,8 @@ jobs:
     - name: Check format
       run: nix-shell -p nixpkgs-fmt --run 'nixpkgs-fmt --check .'
     - name: NixOS Configuration Evaluation Check
-      run: nix-instantiate --eval --strict .#nixosConfigurations.ninezeroes.config.system.build.toplevel
+      run: nix eval --raw .#nixosConfigurations.ninezeroes.config.system.build.toplevel
     - name: Darwin Configuration Evaluation Check
-      run: nix-instantiate --eval --strict .#darwinConfigurations.trueswiftie.system
+      run: nix eval --raw .#darwinConfigurations.trueswiftie.system
     - name: Minimal Build Check (htop)
       run: nix build .#nixosConfigurations.ninezeroes.config.programs.htop.package
