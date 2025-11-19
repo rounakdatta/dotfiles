@@ -14,5 +14,9 @@ jobs:
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Check format
       run: nix-shell -p nixpkgs-fmt --run 'nixpkgs-fmt --check .'
-    - name: Nix Flake Check
-      run: nix flake check
+    - name: Nix Flake Evaluation Check
+      run: nix flake check --no-build
+    - name: Build trueswiftie Home Manager config
+      run: nix build .#darwinConfigurations.trueswiftie.home-manager.activation-script
+    - name: Build ninezeroes Home Manager config
+      run: nix build .#nixosConfigurations.ninezeroes.home-manager.activation-script
