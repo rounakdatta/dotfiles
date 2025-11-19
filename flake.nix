@@ -24,63 +24,63 @@
   };
 
   outputs = { self, nixpkgs, home-manager, nix-darwin, mac-app-util, ... } @ inputs:
-  let
-    user = import ./lib/user.nix;
-  in
-  {
-    # starting point of an x86_64 NixOS installation
-    nixosConfigurations = {
-      ninezeroes = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        specialArgs = { inherit inputs self user; };
-        modules = [
-          ./hosts/ninezeroes/configuration.nix
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.extraSpecialArgs = { inherit user; };
-            home-manager.users.${user.username} = {
-              imports = [ ./hosts/ninezeroes/home.nix ];
-            };
-          }
-        ];
+    let
+      user = import ./lib/user.nix;
+    in
+    {
+      # starting point of an x86_64 NixOS installation
+      nixosConfigurations = {
+        ninezeroes = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = { inherit inputs self user; };
+          modules = [
+            ./hosts/ninezeroes/configuration.nix
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.extraSpecialArgs = { inherit user; };
+              home-manager.users.${user.username} = {
+                imports = [ ./hosts/ninezeroes/home.nix ];
+              };
+            }
+          ];
+        };
       };
-    };
 
-    # starting point of a user-level Nix installation on an aarch64 macOS system
-    darwinConfigurations = {
-      trueswiftie = nix-darwin.lib.darwinSystem {
-        system = "aarch64-darwin";
-        specialArgs = { inherit inputs self user; };
-        modules = [
-          mac-app-util.darwinModules.default
-          ./hosts/trueswiftie/configuration.nix
-          ./hosts/trueswiftie/software.nix
-          home-manager.darwinModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            # Automatically backup conflicting files with .backup extension
-            home-manager.backupFileExtension = "backup";
-            home-manager.users.${user.username} = {
-              imports = [
-                mac-app-util.homeManagerModules.default
-                ./hosts/trueswiftie/home.nix
-              ];
-            };
-          }
-        ];
+      # starting point of a user-level Nix installation on an aarch64 macOS system
+      darwinConfigurations = {
+        trueswiftie = nix-darwin.lib.darwinSystem {
+          system = "aarch64-darwin";
+          specialArgs = { inherit inputs self user; };
+          modules = [
+            mac-app-util.darwinModules.default
+            ./hosts/trueswiftie/configuration.nix
+            ./hosts/trueswiftie/software.nix
+            home-manager.darwinModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              # Automatically backup conflicting files with .backup extension
+              home-manager.backupFileExtension = "backup";
+              home-manager.users.${user.username} = {
+                imports = [
+                  mac-app-util.homeManagerModules.default
+                  ./hosts/trueswiftie/home.nix
+                ];
+              };
+            }
+          ];
+        };
       };
-    };
 
-    checks = {
-      x86_64-linux = {
-        nixos = self.nixosConfigurations.ninezeroes.config.system.build.toplevel;
-      };
-      aarch64-darwin = {
-        darwin = self.darwinConfigurations.trueswiftie.system;
+      checks = {
+        x86_64-linux = {
+          nixos = self.nixosConfigurations.ninezeroes.config.system.build.toplevel;
+        };
+        aarch64-darwin = {
+          darwin = self.darwinConfigurations.trueswiftie.system;
+        };
       };
     };
-  };
 }
