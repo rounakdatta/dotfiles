@@ -28,6 +28,7 @@
       git
     ];
     shell = pkgs.fish;
+    ignoreShellProgramCheck = true;
   };
 
   # Allow unfree packages
