@@ -3,19 +3,13 @@ let
   isDarwin = pkgs.stdenv.isDarwin;
 in
 {
-  # On macOS, use GPG Suite (Homebrew cask) for native keychain integration
-  # On Linux, use Nix's GPG
   programs.gpg = {
-    enable = !isDarwin;
+    enable = true;
   };
 
-  services.gpg-agent =
-    if isDarwin then {
-      enable = false;
-    } else {
-      enable = true;
-      pinentryPackage = pkgs.pinentry-gnome3;
-      enableSshSupport = true;
-    };
+  services.gpg-agent = {
+    enable = true;
+    pinentryPackage = if isDarwin then pkgs.pinentry_mac else pkgs.pinentry-gnome3;
+    enableSshSupport = !isDarwin;
+  };
 }
-
