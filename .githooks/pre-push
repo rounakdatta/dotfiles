@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Running nixpkgs-fmt check..."
+
+if ! nix-shell -p nixpkgs-fmt --run 'nixpkgs-fmt --check .'; then
+    echo ""
+    echo "Formatting issues found. Run 'nix-shell -p nixpkgs-fmt --run \"nixpkgs-fmt .\"' to fix."
+    exit 1
+fi
+
+echo "Formatting check passed."

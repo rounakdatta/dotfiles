@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Get list of staged .nix files
+staged_nix_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.nix$' || true)
+
+if [ -z "$staged_nix_files" ]; then
+    exit 0
+fi
+
+echo "Formatting staged .nix files..."
+
+# Format only the staged nix files
+nix-shell -p nixpkgs-fmt --run "nixpkgs-fmt $staged_nix_files"
+
+# Re-stage the formatted files
+echo "$staged_nix_files" | xargs git add
+
+echo "Formatting complete."

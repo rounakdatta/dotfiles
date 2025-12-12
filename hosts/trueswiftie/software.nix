@@ -35,6 +35,7 @@
       "FairwindsOps/tap"
       "rajatjindal/tap"
       "metalbear-co/mirrord"
+      "cue-lang/tap"
     ];
 
     # `brew list <>` can help pinpoint package name
@@ -63,6 +64,7 @@
       "rajatjindal/tap/modify-secret"
       "rga" # powerful tool like ripgrep, but within files
       "colima" # lightweight container runtime
+      "lima-additional-guestagents"
       "qemu" # this is required for multi-arch container builds
       "git-delta"
       "kubectl"
@@ -71,6 +73,8 @@
       "gemini-cli"
       "metalbear-co/mirrord/mirrord"
       "opencode"
+      "cue-lang/tap/cue"
+      "gh"
     ];
 
     casks = [

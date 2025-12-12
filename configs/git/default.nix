@@ -5,8 +5,6 @@ in
 {
   programs.git = {
     enable = true;
-    userEmail = user.email;
-    userName = "Rounak Datta";
     signing = {
       key = user.gpgKey;
       signByDefault = true;
@@ -26,7 +24,11 @@ in
       }
       { path = "~/.gitconfig.https"; }
     ];
-    extraConfig = {
+    settings = {
+      user = {
+        email = user.email;
+        name = "Rounak Datta";
+      };
       diff.external = "difft";
     };
   };
