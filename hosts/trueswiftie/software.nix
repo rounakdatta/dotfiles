@@ -75,6 +75,7 @@
       "opencode"
       "cue-lang/tap/cue"
       "gh"
+      "yt-dlp"
     ];
 
     casks = [
