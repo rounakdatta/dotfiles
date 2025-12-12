@@ -45,7 +45,7 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
-              home-manager.extraSpecialArgs = { inherit user; };
+              home-manager.extraSpecialArgs = { inherit user inputs; };
               home-manager.users.${user.username} = {
                 imports = [ ./hosts/ninezeroes/home.nix ];
               };
@@ -69,7 +69,7 @@
               home-manager.useUserPackages = true;
               # Automatically backup conflicting files with .backup extension
               home-manager.backupFileExtension = "backup";
-              home-manager.extraSpecialArgs = { inherit inputs; };
+              home-manager.extraSpecialArgs = { inherit user inputs; };
               home-manager.users.${user.username} = {
                 imports = [
                   mac-app-util.homeManagerModules.default
