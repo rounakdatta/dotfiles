@@ -21,6 +21,12 @@
     mac-app-util = {
       url = "github:hraban/mac-app-util";
     };
+
+    # vim plugins not in nixpkgs or needing latest version
+    copilot-lua = {
+      url = "github:zbirenbaum/copilot.lua";
+      flake = false;
+    };
   };
 
   outputs = { self, nixpkgs, home-manager, nix-darwin, mac-app-util, ... } @ inputs:
@@ -63,6 +69,7 @@
               home-manager.useUserPackages = true;
               # Automatically backup conflicting files with .backup extension
               home-manager.backupFileExtension = "backup";
+              home-manager.extraSpecialArgs = { inherit inputs; };
               home-manager.users.${user.username} = {
                 imports = [
                   mac-app-util.homeManagerModules.default

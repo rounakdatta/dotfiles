@@ -1,4 +1,4 @@
-{ config, pkgs, ... }: {
+{ config, pkgs, inputs, ... }: {
   programs.neovim = {
     enable = true;
     vimAlias = true;
@@ -7,12 +7,7 @@
       {
         plugin = pkgs.vimUtils.buildVimPlugin {
           name = "copilot.lua";
-          src = pkgs.fetchFromGitHub {
-            owner = "zbirenbaum";
-            repo = "copilot.lua";
-            rev = "master";
-            sha256 = "sha256-Jw4Q76FolG3F/AN7WZn/mNNde/21uAJ+yqESmOlyNww=";
-          };
+          src = inputs.copilot-lua;
         };
         config = ''
           lua << EOF
