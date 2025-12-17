@@ -50,5 +50,8 @@
 
     # yes, we live up in the clouds
     /opt/homebrew/bin/gcloud components install gke-gcloud-auth-plugin
+
+    # Android SDK setup
+    yes | /opt/homebrew/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
   '';
 }
