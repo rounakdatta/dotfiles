@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Get list of staged .nix files
-staged_nix_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.nix$' || true)
+# Get list of staged .nix files (space-separated for shell command)
+staged_nix_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.nix$' | tr '\n' ' ' || true)
 
 if [ -z "$staged_nix_files" ]; then
     exit 0

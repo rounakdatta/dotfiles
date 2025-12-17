@@ -118,6 +118,9 @@
       "claude-code"
       "codex"
       "antigravity"
+      "cap"
+      "temurin@21"
+      "android-commandlinetools"
     ];
 
     # `mas search <>` can help pinpoint package name
