@@ -76,6 +76,7 @@
       "cue-lang/tap/cue"
       "gh"
       "yt-dlp"
+      "oven-sh/bun/bun"
     ];
 
     casks = [

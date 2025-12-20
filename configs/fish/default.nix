@@ -66,6 +66,8 @@ in
         set PATH $PATH /opt/homebrew/opt/node@18/bin
         set JAVA_HOME /usr/libexec/java_home
         set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
+
+        alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
       ''
     else
       ''
