@@ -6,6 +6,7 @@
 let
   # Claude Code settings as a Nix attrset for better maintainability
   claudeSettings = {
+    cleanupPeriodDays = 99999;
     alwaysThinkingEnabled = true;
     statusLine = {
       type = "command";
