@@ -25,10 +25,7 @@ let
         }
       ];
     };
-  };
-
-  # all the mcp conigs live here
-  mcpConfig = {
+    # MCP servers configuration
     mcpServers = {
       playwright = {
         command = "npx";
@@ -55,11 +52,6 @@ in
   # Create ~/.claude directory and settings.json
   home.file.".claude/settings.json" = {
     text = builtins.toJSON claudeSettings;
-  };
-
-  # Create ~/.claude/mcp.json for MCP server configuration
-  home.file.".claude/mcp.json" = {
-    text = builtins.toJSON mcpConfig;
   };
 
   # Ensure the .claude directory has correct permissions
