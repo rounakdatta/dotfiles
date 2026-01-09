@@ -122,6 +122,7 @@
       "cap"
       "temurin@21"
       "android-commandlinetools"
+      "flutter"
     ];
 
     # `mas search <>` can help pinpoint package name

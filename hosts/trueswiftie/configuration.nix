@@ -52,7 +52,8 @@
     /opt/homebrew/bin/gcloud components install gke-gcloud-auth-plugin
 
     # Android SDK setup - accept licenses first, then install
+    # SDK installs to /opt/homebrew/share/android-commandlinetools by default
     yes | /opt/homebrew/bin/sdkmanager --licenses || true
-    /opt/homebrew/bin/sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+    /opt/homebrew/bin/sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmdline-tools;latest"
   '';
 }
