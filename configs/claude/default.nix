@@ -57,8 +57,9 @@ in
     text = builtins.toJSON claudeSettings;
   };
 
-  # Create ~/.claude.json for MCP server configuration (user-level)
-  home.file.".claude.json" = {
+  # Create .mcp.json at the dotfiles project root for MCP server configuration
+  # This is a static config file that won't interfere with dynamic ~/.claude.json
+  home.file."dotfiles/.mcp.json" = {
     text = builtins.toJSON mcpConfig;
   };
 
