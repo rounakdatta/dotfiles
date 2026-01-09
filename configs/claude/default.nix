@@ -12,6 +12,19 @@ let
       type = "command";
       command = "npx ccusage@latest statusline";
     };
+    hooks = {
+      PostToolUse = [
+        {
+          matcher = "Bash";
+          hooks = [
+            {
+              type = "command";
+              command = "bunx github:nitsanavni/bash-history-mcp hook";
+            }
+          ];
+        }
+      ];
+    };
   };
 
   # all the mcp conigs live here
@@ -27,6 +40,13 @@ let
           # I think this is ok to be pubic, it's local to my browser anyway
           PLAYWRIGHT_MCP_EXTENSION_TOKEN = "wASkRXZOFCIn7QoeT2KiO7e8hj7dEV7I-K7vfl4gLjU";
         };
+      };
+      bash-history = {
+        command = "bunx";
+        args = [
+          "github:nitsanavni/bash-history-mcp"
+          "mcp"
+        ];
       };
     };
   };
