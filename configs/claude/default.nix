@@ -10,7 +10,8 @@ let
     alwaysThinkingEnabled = true;
     statusLine = {
       type = "command";
-      command = "npx ccusage@latest statusline";
+      # Dynamic lookup finds latest installed claude-hud plugin version
+      command = "bash -c 'bun \"$(ls -td ~/.claude/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)src/index.ts\"'";
     };
     hooks = {
       PostToolUse = [
