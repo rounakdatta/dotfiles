@@ -10,7 +10,7 @@ let
     alwaysThinkingEnabled = true;
     statusLine = {
       type = "command";
-      command = "npx ccusage@latest statusline";
+      command = "bash -c 'basename $(dirname $(pwd))/$(basename $(pwd)); git branch --show-current 2>/dev/null | xargs -I{} echo \" ({})\" || true; echo -n \" | \"; npx ccusage@latest statusline' | tr -d '\\n'";
     };
     hooks = {
       PostToolUse = [
