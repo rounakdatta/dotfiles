@@ -10,7 +10,7 @@ let
     alwaysThinkingEnabled = true;
     statusLine = {
       type = "command";
-      command = "bash -c 'pwd | sed \"s|$HOME|~|\" | awk -F/ \"{print \\$(NF-1)\\\"/\\\"\\$NF}\" | tr -d \"\\n\"; git branch --show-current 2>/dev/null | sed \"s/^/ (/;s/$/)/\" || true'";
+      command = "bash -c 'echo -n \"\\e[36m\"; pwd | sed \"s|$HOME|~|\" | awk -F/ \"{print \\$(NF-1)\\\"/\\\"\\$NF}\" | tr -d \"\\n\"; echo -n \"\\e[0m\"; git branch --show-current 2>/dev/null | sed \"s/^/ \\e[33m(/;s/$/)\\e[0m/\" || true'";
     };
     hooks = {
       PostToolUse = [
