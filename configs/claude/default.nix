@@ -10,8 +10,7 @@ let
     alwaysThinkingEnabled = true;
     statusLine = {
       type = "command";
-      # Dynamic lookup finds latest installed claude-hud plugin version
-      command = "bash -c 'bun \"$(ls -td ~/.claude/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)src/index.ts\"'";
+      command = "bash -c 'pwd | sed \"s|$HOME|~|\" | awk -F/ \"{print \\$(NF-1)\\\"/\\\"\\$NF}\" | tr -d \"\\n\"; git branch --show-current 2>/dev/null | sed \"s/^/ (/;s/$/)/\" || true'";
     };
     hooks = {
       PostToolUse = [
