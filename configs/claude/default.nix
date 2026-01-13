@@ -10,7 +10,7 @@ let
     alwaysThinkingEnabled = true;
     statusLine = {
       type = "command";
-      command = "bash -c 'echo -n \"\\e[36m\"; pwd | sed \"s|$HOME|~|\" | awk -F/ \"{print \\$(NF-1)\\\"/\\\"\\$NF}\" | tr -d \"\\n\"; echo -n \"\\e[0m\"; git branch --show-current 2>/dev/null | sed \"s/^/ \\e[33m(/;s/$/)\\e[0m/\" || true'";
+      command = "bash -c 'basename $(dirname $(pwd))/$(basename $(pwd)); git branch --show-current 2>/dev/null | xargs -I{} echo \" ({})\" || true' | tr -d '\\n'";
     };
     hooks = {
       PostToolUse = [
