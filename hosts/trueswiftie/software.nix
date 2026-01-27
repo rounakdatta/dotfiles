@@ -73,6 +73,7 @@
       "git-delta"
       "kubectl"
       "asciinema"
+      "agg"
       "azcopy"
       "gemini-cli"
       "metalbear-co/mirrord/mirrord"
@@ -81,6 +82,7 @@
       "gh"
       "yt-dlp"
       "oven-sh/bun/bun"
+      "kubectx"
       "lyric-tech/mic/mic"
     ];
 
