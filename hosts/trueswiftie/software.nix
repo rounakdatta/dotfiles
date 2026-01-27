@@ -36,6 +36,10 @@
       "rajatjindal/tap"
       "metalbear-co/mirrord"
       "cue-lang/tap"
+      {
+        name = "lyric-tech/mic";
+        clone_target = "git@github.com:lyric-tech/mic.git";
+      }
     ];
 
     # `brew list <>` can help pinpoint package name
@@ -79,6 +83,7 @@
       "yt-dlp"
       "oven-sh/bun/bun"
       "kubectx"
+      "lyric-tech/mic/mic"
     ];
 
     casks = [
