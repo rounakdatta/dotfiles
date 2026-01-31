@@ -103,5 +103,9 @@
       enablePrivate = true;
       privateRepo.url = "git@github.com:rounakdatta/claude-private-skills.git";
     };
+
+    go-packages.packages = [
+      "github.com/blacktop/mcp-tts@latest"
+    ];
   };
 }

@@ -124,6 +124,7 @@
       "cursor-cli"
       "zed"
       "claude-code"
+      "claude"
       "codex"
       "antigravity"
       "cap"

@@ -12,6 +12,7 @@
     ./nextcloud
     ./emacs
     ./claude
+    ./go
     ./claude-skills
   ];
 }
