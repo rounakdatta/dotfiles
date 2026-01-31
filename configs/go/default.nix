@@ -1,25 +1,28 @@
-{ pkgs, lib, ... }:
+{ config, lib, ... }:
+
 let
-  buildGoInstall = { owner, repo, rev ? "main", sha256, vendorHash, subPackages ? [ "." ] }:
-    pkgs.buildGoModule {
-      pname = repo;
-      version = rev;
-      src = pkgs.fetchFromGitHub { inherit owner repo rev sha256; };
-      inherit vendorHash subPackages;
-    };
+  cfg = config.programs.go-packages;
 in
 {
-  home.packages = [
-    # Custom Go packages (use lib.fakeHash initially, build will show correct hash)
-    (buildGoInstall {
-      owner = "blacktop";
-      repo = "mcp-tts";
-      sha256 = lib.fakeHash;
-      vendorHash = lib.fakeHash;
-    })
+  options.programs.go-packages = {
+    enable = lib.mkOption { type = lib.types.bool; default = true; };
 
-    # Many Go tools already exist in nixpkgs:
-    # pkgs.gopls
-    # pkgs.golangci-lint
-  ];
+    packages = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Go packages to install via 'go install'";
+    };
+  };
+
+  config = lib.mkIf (cfg.enable && cfg.packages != [ ]) {
+    home.activation.goInstall = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      export PATH="/opt/homebrew/bin:$HOME/go/bin:$PATH"
+      export GOPATH="$HOME/go"
+
+      ${lib.concatMapStringsSep "\n" (pkg: ''
+        echo "Installing ${pkg}..."
+        go install ${pkg} || true
+      '') cfg.packages}
+    '';
+  };
 }

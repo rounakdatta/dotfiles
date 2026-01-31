@@ -60,11 +60,11 @@ let
         ];
       };
       say = {
-        command = "mcp-tts";
-        env = {
-          GOOGLE_AI_API_KEY = "AIzaSyDN6DWVv9pnGL4-83FbAhQa9_fx616vJys";
-          MCP_TTS_SUPPRESS_SPEAKING_OUTPUT = "true";
-        };
+        command = "bash";
+        args = [
+          "-c"
+          "GOOGLE_AI_API_KEY=$(pass show api-keys/google-gemini) MCP_TTS_SUPPRESS_SPEAKING_OUTPUT=true exec $HOME/go/bin/mcp-tts"
+        ];
       };
     };
   };
