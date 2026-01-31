@@ -13,6 +13,17 @@ let
       command = "bash -c 'basename $(dirname $(pwd))/$(basename $(pwd)); git branch --show-current 2>/dev/null | xargs -I{} echo \" ({})\" || true; echo -n \" | \"; npx ccusage@latest statusline' | tr -d '\\n'";
     };
     hooks = {
+      SessionStart = [
+        {
+          matcher = "startup";
+          hooks = [
+            {
+              type = "command";
+              command = "say -v \"Tara\" -r 100 \"Claude Code!!! LFG!\"";
+            }
+          ];
+        }
+      ];
       PostToolUse = [
         {
           matcher = "Bash";
@@ -47,6 +58,13 @@ let
           "github:nitsanavni/bash-history-mcp"
           "mcp"
         ];
+      };
+      say = {
+        command = "mcp-tts";
+        env = {
+          GOOGLE_AI_API_KEY = "AIzaSyDN6DWVv9pnGL4-83FbAhQa9_fx616vJys";
+          MCP_TTS_SUPPRESS_SPEAKING_OUTPUT = "true";
+        };
       };
     };
   };
