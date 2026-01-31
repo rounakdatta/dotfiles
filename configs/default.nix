@@ -13,5 +13,6 @@
     ./emacs
     ./claude
     ./go
+    ./claude-skills
   ];
 }
