@@ -5,18 +5,21 @@ let
 
   localSkills = ./skills;
 
-  privateSkills = if cfg.enablePrivate then
-    builtins.fetchGit ({
-      url = cfg.privateRepo.url;
-      ref = cfg.privateRepo.ref;
-    } // lib.optionalAttrs (cfg.privateRepo.rev != null) {
-      rev = cfg.privateRepo.rev;
-    })
-  else null;
+  privateSkills =
+    if cfg.enablePrivate then
+      builtins.fetchGit
+        ({
+          url = cfg.privateRepo.url;
+          ref = cfg.privateRepo.ref;
+        } // lib.optionalAttrs (cfg.privateRepo.rev != null) {
+          rev = cfg.privateRepo.rev;
+        })
+    else null;
 
-  privateSource = if privateSkills != null && cfg.privateRepo.subdir != "" then
-    "${privateSkills}/${cfg.privateRepo.subdir}"
-  else privateSkills;
+  privateSource =
+    if privateSkills != null && cfg.privateRepo.subdir != "" then
+      "${privateSkills}/${cfg.privateRepo.subdir}"
+    else privateSkills;
 in
 {
   options.programs.claude-skills = {
