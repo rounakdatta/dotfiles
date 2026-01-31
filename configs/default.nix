@@ -12,5 +12,6 @@
     ./nextcloud
     ./emacs
     ./claude
+    ./claude-skills
   ];
 }
