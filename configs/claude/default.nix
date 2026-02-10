@@ -27,6 +27,16 @@ let
     };
   };
 
+  # Claude Code plugin marketplaces (GitHub repos)
+  claudePluginMarketplaces = [
+    "thedotmack/claude-mem"
+  ];
+
+  # Plugins to install (plugin-name or plugin-name@marketplace-name)
+  claudePlugins = [
+    "claude-mem"
+  ];
+
   # MCP servers configuration - separate from settings
   mcpConfig = {
     mcpServers = {
@@ -68,6 +78,20 @@ in
   home.activation.createClaudeDirectory = lib.hm.dag.entryBefore [ "writeBoundary" ] ''
     mkdir -p ${config.home.homeDirectory}/.claude
     chmod 700 ${config.home.homeDirectory}/.claude
+  '';
+
+  # Install Claude Code plugins declaratively
+  home.activation.installClaudePlugins = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    CLAUDE="/opt/homebrew/bin/claude"
+    if [ -x "$CLAUDE" ]; then
+      ${lib.concatMapStringsSep "\n      " (m: ''
+        $CLAUDE plugin marketplace add ${m} 2>/dev/null || true
+      '') claudePluginMarketplaces}
+
+      ${lib.concatMapStringsSep "\n      " (p: ''
+        $CLAUDE plugin install ${p} --scope user 2>/dev/null || true
+      '') claudePlugins}
+    fi
   '';
 
   # Merge MCP servers into ~/.claude.json, preserving all other state
