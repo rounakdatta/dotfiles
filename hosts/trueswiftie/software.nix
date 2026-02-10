@@ -131,6 +131,7 @@
       "temurin@21"
       "android-commandlinetools"
       "flutter"
+      "handy" # fast, fast STT
     ];
 
     # `mas search <>` can help pinpoint package name
