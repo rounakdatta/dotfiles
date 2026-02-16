@@ -65,6 +65,14 @@ let
           "GOOGLE_AI_API_KEY=$(pass show api-keys/google-gemini) MCP_TTS_SUPPRESS_SPEAKING_OUTPUT=true exec $HOME/go/bin/mcp-tts"
         ];
       };
+      zomato = {
+        command = "npx";
+        args = [
+          "-y"
+          "mcp-remote"
+          "https://mcp-server.zomato.com/mcp"
+        ];
+      };
     };
   };
 in
