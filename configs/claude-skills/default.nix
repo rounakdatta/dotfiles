@@ -27,8 +27,8 @@ in
     home.activation.syncPrivateSkills = lib.mkIf cfg.enablePrivate (
       lib.hm.dag.entryAfter [ "writeBoundary" ] ''
                 SKILLS_DIR="$HOME/.claude/skills"
-                CACHE_DIR="$HOME/.cache/claude-private-skills"
-                MANAGED_LINKS_FILE="$HOME/.cache/claude-private-skills-managed-links"
+                CACHE_DIR="$HOME/.cache/agent-private-skills"
+                MANAGED_LINKS_FILE="$HOME/.cache/agent-private-skills-managed-links"
                 JQ_BIN="${pkgs.jq}/bin/jq"
 
                 mkdir -p "$SKILLS_DIR"
