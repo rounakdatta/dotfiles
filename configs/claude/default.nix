@@ -48,7 +48,7 @@ let
         ];
         env = {
           # I think this is ok to be pubic, it's local to my browser anyway
-          PLAYWRIGHT_MCP_EXTENSION_TOKEN = "wASkRXZOFCIn7QoeT2KiO7e8hj7dEV7I-K7vfl4gLjU";
+          PLAYWRIGHT_MCP_EXTENSION_TOKEN = "7-yFGyEzSGhYDUCvdQXnZ0fzgEr0g2HuTyMhuWKgiLI";
         };
       };
       bash-history = {
@@ -56,21 +56,6 @@ let
         args = [
           "github:nitsanavni/bash-history-mcp"
           "mcp"
-        ];
-      };
-      say = {
-        command = "bash";
-        args = [
-          "-c"
-          "GOOGLE_AI_API_KEY=$(pass show api-keys/google-gemini) MCP_TTS_SUPPRESS_SPEAKING_OUTPUT=true exec $HOME/go/bin/mcp-tts"
-        ];
-      };
-      zomato = {
-        command = "npx";
-        args = [
-          "-y"
-          "mcp-remote"
-          "https://mcp-server.zomato.com/mcp"
         ];
       };
     };
