@@ -35,6 +35,7 @@
       nixpkgs-fmt
       texliveFull
       pyenv
+      uv
       poppler
       # nix tooling, mostly for LSP stuff, requested by Zed
       nixd

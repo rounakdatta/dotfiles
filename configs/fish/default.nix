@@ -64,6 +64,7 @@ in
         set PATH $PATH /etc/profiles/per-user/${config.home.username}/bin
         set PATH $PATH /opt/homebrew/bin
         set PATH $PATH /opt/homebrew/opt/node@18/bin
+        set PATH $PATH /Applications/Obsidian.app/Contents/MacOS
         set JAVA_HOME /usr/libexec/java_home
         set ANDROID_HOME /opt/homebrew/share/android-commandlinetools
         set PATH $ANDROID_HOME/platform-tools $ANDROID_HOME/cmdline-tools/latest/bin $PATH

@@ -80,7 +80,7 @@ in
                         destination="$HOME"
                         ;;
                       "~/"*)
-                        destination="$HOME/$(printf '%s' "$destination" | sed 's#^~/##')"
+                        destination="$HOME/''${destination#"~/"}"
                         ;;
                     esac
 
