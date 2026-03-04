@@ -80,7 +80,7 @@
 
     claude-skills = {
       enablePrivate = true;
-      privateRepo.url = "git@github.com:rounakdatta/agent-private-skills.git";
+      privateRepo.url = "git@github.com:rounakdatta/agent-smith.git";
     };
   };
 }
