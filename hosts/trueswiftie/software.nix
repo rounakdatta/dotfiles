@@ -97,9 +97,9 @@
       "brave-browser"
       "chromium"
       "dbeaver-community"
-      "docker"
+      "docker-desktop"
       "firefox"
-      "google-cloud-sdk"
+      "gcloud-cli"
       "gpg-suite"
       "keka"
       "krita"
@@ -131,6 +131,8 @@
       "temurin@21"
       "android-commandlinetools"
       "flutter"
+      "handy" # fast, fast STT
+      "whatsapp"
     ];
 
     # `mas search <>` can help pinpoint package name

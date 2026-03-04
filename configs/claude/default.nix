@@ -13,17 +13,6 @@ let
       command = "bash -c 'basename $(dirname $(pwd))/$(basename $(pwd)); git branch --show-current 2>/dev/null | xargs -I{} echo \" ({})\" || true; echo -n \" | \"; npx ccusage@latest statusline' | tr -d '\\n'";
     };
     hooks = {
-      SessionStart = [
-        {
-          matcher = "startup";
-          hooks = [
-            {
-              type = "command";
-              command = "say -v \"Tara\" -r 100 \"Claude Code!!! LFG!\"";
-            }
-          ];
-        }
-      ];
       PostToolUse = [
         {
           matcher = "Bash";
@@ -38,6 +27,16 @@ let
     };
   };
 
+  # Claude Code plugin marketplaces (GitHub repos)
+  claudePluginMarketplaces = [
+    "thedotmack/claude-mem"
+  ];
+
+  # Plugins to install (plugin-name or plugin-name@marketplace-name)
+  claudePlugins = [
+    "claude-mem"
+  ];
+
   # MCP servers configuration - separate from settings
   mcpConfig = {
     mcpServers = {
@@ -49,7 +48,7 @@ let
         ];
         env = {
           # I think this is ok to be pubic, it's local to my browser anyway
-          PLAYWRIGHT_MCP_EXTENSION_TOKEN = "wASkRXZOFCIn7QoeT2KiO7e8hj7dEV7I-K7vfl4gLjU";
+          PLAYWRIGHT_MCP_EXTENSION_TOKEN = "7-yFGyEzSGhYDUCvdQXnZ0fzgEr0g2HuTyMhuWKgiLI";
         };
       };
       bash-history = {
@@ -57,13 +56,6 @@ let
         args = [
           "github:nitsanavni/bash-history-mcp"
           "mcp"
-        ];
-      };
-      say = {
-        command = "bash";
-        args = [
-          "-c"
-          "GOOGLE_AI_API_KEY=$(pass show api-keys/google-gemini) MCP_TTS_SUPPRESS_SPEAKING_OUTPUT=true exec $HOME/go/bin/mcp-tts"
         ];
       };
     };
@@ -79,6 +71,20 @@ in
   home.activation.createClaudeDirectory = lib.hm.dag.entryBefore [ "writeBoundary" ] ''
     mkdir -p ${config.home.homeDirectory}/.claude
     chmod 700 ${config.home.homeDirectory}/.claude
+  '';
+
+  # Install Claude Code plugins declaratively
+  home.activation.installClaudePlugins = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    CLAUDE="/opt/homebrew/bin/claude"
+    if [ -x "$CLAUDE" ]; then
+      ${lib.concatMapStringsSep "\n      " (m: ''
+        $CLAUDE plugin marketplace add ${m} 2>/dev/null || true
+      '') claudePluginMarketplaces}
+
+      ${lib.concatMapStringsSep "\n      " (p: ''
+        $CLAUDE plugin install ${p} --scope user 2>/dev/null || true
+      '') claudePlugins}
+    fi
   '';
 
   # Merge MCP servers into ~/.claude.json, preserving all other state
