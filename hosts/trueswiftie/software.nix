@@ -17,8 +17,6 @@
 
   homebrew = {
     enable = true;
-    # disabling quarantine would mean no stupid macOS do-you-really-want-to-open dialogs
-    caskArgs.no_quarantine = true;
     onActivation = {
       autoUpdate = true;
       # uninstall: removes packages not listed in the config (without requiring Full Disk Access)
@@ -40,6 +38,7 @@
         name = "lyric-tech/mic";
         clone_target = "git@github.com:lyric-tech/mic.git";
       }
+      "guumaster/tap"
     ];
 
     # `brew list <>` can help pinpoint package name
@@ -84,6 +83,7 @@
       "oven-sh/bun/bun"
       "kubectx"
       "lyric-tech/mic/mic"
+      "guumaster/tap/hostctl"
     ];
 
     casks = [
@@ -133,6 +133,8 @@
       "flutter"
       "handy" # fast, fast STT
       "whatsapp"
+      "vysor"
+      "llamabarn" # r/LocalLLaMA ftw
     ];
 
     # `mas search <>` can help pinpoint package name
