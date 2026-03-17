@@ -134,7 +134,12 @@
       "handy" # fast, fast STT
       "whatsapp"
       "vysor"
-      "llamabarn" # r/LocalLLaMA ftw
+      {
+        name = "llamabarn";
+        args = {
+          appdir = "~/Applications";
+        };
+      } # r/LocalLLaMA ftw
     ];
 
     # `mas search <>` can help pinpoint package name
