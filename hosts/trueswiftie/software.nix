@@ -18,7 +18,7 @@
   homebrew = {
     enable = true;
     # disabling quarantine would mean no stupid macOS do-you-really-want-to-open dialogs
-    caskArgs.no_quarantine = true;
+    # caskArgs.no_quarantine = true; # no quarantine is dead
     onActivation = {
       autoUpdate = true;
       # uninstall: removes packages not listed in the config (without requiring Full Disk Access)
