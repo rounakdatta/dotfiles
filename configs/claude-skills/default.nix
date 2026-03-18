@@ -28,10 +28,14 @@ in
       lib.hm.dag.entryAfter [ "writeBoundary" ] ''
         SKILLS_DIR="$HOME/.claude/skills"
         CACHE_DIR="$HOME/.cache/agent-smith"
+        EXTERNAL_CACHE_DIR="$HOME/.cache/agent-smith-externals"
+        GENERATED_SKILLS_DIR="$HOME/.cache/agent-smith-generated-skills"
         MANAGED_LINKS_FILE="$HOME/.cache/agent-smith-managed-links"
         JQ_BIN="${pkgs.jq}/bin/jq"
 
         mkdir -p "$SKILLS_DIR"
+        mkdir -p "$EXTERNAL_CACHE_DIR"
+        mkdir -p "$GENERATED_SKILLS_DIR"
         mkdir -p "$(dirname "$MANAGED_LINKS_FILE")"
 
         if [ ! -d "$CACHE_DIR" ]; then
@@ -48,19 +52,21 @@ in
         fi
         : > "$MANAGED_LINKS_FILE"
 
-        # A skill is any directory containing SKILL.md.
-        while IFS= read -r skill_md; do
-          skill_dir="$(dirname "$skill_md")"
+        # A skill is any directory containing skill.json or SKILL.md.
+        while IFS= read -r skill_dir; do
           manifest="$skill_dir/skill.json"
           skill_name="$(basename "$skill_dir")"
+          resolved_skill_dir="$skill_dir"
 
           enabled="true"
           destinations="$SKILLS_DIR"
+          source=""
 
           # Optional skill metadata:
           # {
           #   "enabled": true,
-          #   "destinations": ["~/.claude/skills", "~/work/byoc/.claude/skills"]
+          #   "destinations": ["~/.claude/skills", "~/work/byoc/.claude/skills"],
+          #   "source": "https://github.com/owner/repo/tree/main/path/to/skill"
           # }
           if [ -f "$manifest" ]; then
             enabled="$("$JQ_BIN" -r '.enabled // true' "$manifest" 2>/dev/null || echo true)"
@@ -68,6 +74,71 @@ in
               continue
             fi
             destinations="$("$JQ_BIN" -r '(.destinations // ["~/.claude/skills"])[]' "$manifest" 2>/dev/null || echo "~/.claude/skills")"
+            source="$("$JQ_BIN" -r '.source // empty' "$manifest" 2>/dev/null || true)"
+          fi
+
+          if [ -n "$source" ]; then
+            case "$source" in
+              https://github.com/*/tree/*)
+                repo_path="''${source#https://github.com/}"
+                repo_path="''${repo_path%%/tree/*}"
+                ref_and_subpath="''${source#https://github.com/$repo_path/tree/}"
+                ref="''${ref_and_subpath%%/*}"
+                subpath="''${ref_and_subpath#"$ref"/}"
+                repo_url="https://github.com/''${repo_path}.git"
+                repo_cache_dir="$EXTERNAL_CACHE_DIR/$(printf '%s' "''${repo_path}" | tr '/' '_')"
+
+                if [ ! -d "$repo_cache_dir/.git" ]; then
+                  git clone -b "$ref" "$repo_url" "$repo_cache_dir"
+                else
+                  git -C "$repo_cache_dir" fetch origin "$ref"
+                  git -C "$repo_cache_dir" checkout "$ref" || true
+                  git -C "$repo_cache_dir" pull --ff-only origin "$ref" || true
+                fi
+
+                resolved_skill_dir="$repo_cache_dir/''${subpath}"
+                ;;
+              *)
+                echo "Unsupported skill source for $skill_name: $source"
+                continue
+                ;;
+            esac
+          fi
+
+          if [ ! -f "$resolved_skill_dir/SKILL.md" ]; then
+            echo "Skipping $skill_name because SKILL.md is missing at $resolved_skill_dir"
+            continue
+          fi
+
+          if [ -n "$source" ]; then
+            generated_skill_dir="$GENERATED_SKILLS_DIR/$skill_name"
+            rm -rf "$generated_skill_dir"
+            mkdir -p "$generated_skill_dir"
+            cp -R "$resolved_skill_dir"/. "$generated_skill_dir"/
+
+            skill_md="$generated_skill_dir/SKILL.md"
+            rewritten_skill_md="$generated_skill_dir/SKILL.md.tmp"
+            awk -v skill_name="$skill_name" '
+              NR == 1 && $0 == "---" { in_frontmatter = 1; print; next }
+              in_frontmatter && $1 == "name:" && !rewritten {
+                print "name: " skill_name
+                rewritten = 1
+                next
+              }
+              in_frontmatter && $0 == "---" {
+                if (!rewritten) {
+                  print "name: " skill_name
+                  rewritten = 1
+                }
+                print
+                in_frontmatter = 0
+                next
+              }
+              { print }
+            ' "$skill_md" > "$rewritten_skill_md"
+            mv "$rewritten_skill_md" "$skill_md"
+
+            resolved_skill_dir="$generated_skill_dir"
           fi
 
           while IFS= read -r destination; do
@@ -84,13 +155,13 @@ in
 
             mkdir -p "$destination"
             target="$destination/$skill_name"
-            ln -sfn "$skill_dir" "$target"
+            ln -sfn "$resolved_skill_dir" "$target"
             echo "$target" >> "$MANAGED_LINKS_FILE"
           done <<EOF
         $destinations
         EOF
         done <<EOF
-        $(find "$CACHE_DIR" -type f -name SKILL.md)
+        $(find "$CACHE_DIR" \( -type f -name 'skill.json' -o -type f -name 'SKILL.md' \) -print0 | xargs -0 -I{} dirname "{}" | sort -u)
         EOF
       ''
     );

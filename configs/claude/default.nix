@@ -47,17 +47,17 @@ let
   # - `projectLocal` -> written into <path>/.mcp.json (directory-level)
   mcpInventory = {
     global = {
-      playwright = {
-        command = "npx";
-        args = [
-          "@playwright/mcp@latest"
-          "--extension"
-        ];
-        env = {
-          # I think this is ok to be pubic, it's local to my browser anyway
-          PLAYWRIGHT_MCP_EXTENSION_TOKEN = "7-yFGyEzSGhYDUCvdQXnZ0fzgEr0g2HuTyMhuWKgiLI";
-        };
-      };
+      # playwright = {
+      #   command = "npx";
+      #   args = [
+      #     "@playwright/mcp@latest"
+      #     "--extension"
+      #   ];
+      #   env = {
+      #     # I think this is ok to be pubic, it's local to my browser anyway
+      #     PLAYWRIGHT_MCP_EXTENSION_TOKEN = "7-yFGyEzSGhYDUCvdQXnZ0fzgEr0g2HuTyMhuWKgiLI";
+      #   };
+      # };
       bash-history = {
         command = "bunx";
         args = [
