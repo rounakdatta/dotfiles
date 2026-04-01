@@ -8,6 +8,7 @@ let
 
   # Claude Code settings as a Nix attrset for better maintainability
   claudeSettings = {
+    autoUpdaterStatus = "disabled";
     cleanupPeriodDays = 99999;
     alwaysThinkingEnabled = true;
     statusLine = {
@@ -63,6 +64,17 @@ let
         args = [
           "github:nitsanavni/bash-history-mcp"
           "mcp"
+        ];
+      };
+      android-remote-control = {
+        command = "npx";
+        args = [
+          "-y"
+          "mcp-remote@latest"
+          "http://roundroid:8080/mcp"
+          "--allow-http"
+          "--header"
+          "Authorization: Bearer "
         ];
       };
     };

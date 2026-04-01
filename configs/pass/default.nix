@@ -1,7 +1,15 @@
-{ config, pkgs, ... }: {
+{ config, lib, pkgs, ... }:
+let
+  passwordStoreDir = "${config.home.homeDirectory}/.password-store";
+in
+{
+  programs.password-store.settings = lib.mkIf config.programs.password-store.enable {
+    PASSWORD_STORE_DIR = passwordStoreDir;
+  };
+
   home.activation = {
     passwordStore = ''
-      PW_DIR=${config.home.homeDirectory}/.password-store
+      PW_DIR=${passwordStoreDir}
 
       if [ ! -d "$PW_DIR" ]; then
           mkdir -p "$PW_DIR"
