@@ -41,7 +41,10 @@ in
         if [ ! -d "$CACHE_DIR" ]; then
           git clone -b ${cfg.privateRepo.ref} ${cfg.privateRepo.url} "$CACHE_DIR"
         else
-          git -C "$CACHE_DIR" pull --ff-only origin ${cfg.privateRepo.ref} || true
+          git -C "$CACHE_DIR" fetch origin ${cfg.privateRepo.ref}
+          git -C "$CACHE_DIR" checkout ${cfg.privateRepo.ref} || true
+          git -C "$CACHE_DIR" reset --hard origin/${cfg.privateRepo.ref}
+          git -C "$CACHE_DIR" clean -fd
         fi
 
         # Remove only previously managed links.
@@ -93,7 +96,8 @@ in
                 else
                   git -C "$repo_cache_dir" fetch origin "$ref"
                   git -C "$repo_cache_dir" checkout "$ref" || true
-                  git -C "$repo_cache_dir" pull --ff-only origin "$ref" || true
+                  git -C "$repo_cache_dir" reset --hard "origin/$ref"
+                  git -C "$repo_cache_dir" clean -fd
                 fi
 
                 resolved_skill_dir="$repo_cache_dir/''${subpath}"
@@ -160,9 +164,11 @@ in
           done <<EOF
         $destinations
         EOF
-        done <<EOF
-        $(find "$CACHE_DIR" \( -type f -name 'skill.json' -o -type f -name 'SKILL.md' \) -print0 | xargs -0 -I{} dirname "{}" | sort -u)
-        EOF
+        done < <(
+          if [ -d "$CACHE_DIR" ]; then
+            find "$CACHE_DIR" \( -type f -name 'skill.json' -o -type f -name 'SKILL.md' \) -print0 | xargs -0 -I{} dirname "{}" | sort -u
+          fi
+        )
       ''
     );
 

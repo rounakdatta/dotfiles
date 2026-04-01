@@ -6,6 +6,7 @@ in
   programs.git = {
     enable = true;
     signing = {
+      format = "openpgp";
       key = user.gpgKey;
       signByDefault = true;
     };
@@ -58,4 +59,3 @@ in
 # adduid
 # blah-blah-blah
 # save
-

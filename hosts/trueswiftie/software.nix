@@ -143,6 +143,7 @@
           appdir = "~/Applications";
         };
       } # r/LocalLLaMA ftw
+      "google-drive"
     ];
 
     # `mas search <>` can help pinpoint package name
