@@ -86,6 +86,7 @@
       "kubectx"
       "lyric-tech/mic/mic"
       "guumaster/tap/hostctl"
+      "googleworkspace-cli"
     ];
 
     casks = [
@@ -125,7 +126,7 @@
       # coding will never be the same again
       "cursor-cli"
       "zed"
-      "claude-code"
+      "claude-code@latest"
       "claude"
       "codex"
       "antigravity"
