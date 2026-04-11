@@ -34,6 +34,8 @@
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
+  services.tailscale.enable = true;
+
   services.nextdns = {
     enable = true;
     arguments = [ "-config" "379869" ]; # yeah feel free to use mine, just drop me a line that you're

@@ -69,8 +69,6 @@ in
         set ANDROID_HOME /opt/homebrew/share/android-commandlinetools
         set PATH $ANDROID_HOME/platform-tools $ANDROID_HOME/cmdline-tools/latest/bin $PATH
         set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
-
-        alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
       ''
     else
       ''
