@@ -12,6 +12,7 @@
     systemPackages = with pkgs; [
       fish
       kitty
+      tailscale
     ];
   };
 
@@ -41,6 +42,7 @@
         clone_target = "git@github.com:lyric-tech/mic.git";
       }
       "guumaster/tap"
+      "rana-gmbh/netfluss"
     ];
 
     # `brew list <>` can help pinpoint package name
@@ -144,12 +146,11 @@
         };
       } # r/LocalLLaMA ftw
       "google-drive"
+      "rana-gmbh/netfluss/netfluss"
     ];
 
     # `mas search <>` can help pinpoint package name
-    masApps = {
-      "Tailscale" = 1475387142; # Tailscale does have a brew package, however this is slightly more complete
-      "Bandwidth+" = 490461369;
-    };
+    masApps = { };
+
   };
 }

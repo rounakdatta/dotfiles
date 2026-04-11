@@ -25,22 +25,6 @@
           PreferredAuthentications = "publickey";
         };
       };
-
-      "jomjom" = {
-        user = "root";
-        identityFile = "~/.ssh/keys/personal.pem";
-        extraOptions = {
-          PreferredAuthentications = "publickey";
-        };
-      };
-
-      "vizerizz" = {
-        user = "rounak";
-        identityFile = "~/.ssh/keys/personal.pem";
-        extraOptions = {
-          PreferredAuthentications = "publickey";
-        };
-      };
     };
   };
 }
