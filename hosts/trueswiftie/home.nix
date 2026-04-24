@@ -105,6 +105,10 @@
       privateRepo.url = "git@github.com:rounakdatta/agent-smith.git";
     };
 
+    npm-packages.packages = [
+      "bengaluru-transit"
+    ];
+
     go-packages.packages = [
       "github.com/blacktop/mcp-tts@latest"
     ];

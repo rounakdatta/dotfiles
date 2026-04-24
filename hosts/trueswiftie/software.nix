@@ -55,6 +55,7 @@
       "mas"
       "pinentry-mac"
       "watch"
+      "apktool"
       "node@18"
       "yarn" # the JS package manager, not the hadoop scheduler
       "azure-cli"
@@ -131,6 +132,7 @@
       "claude-code@latest"
       "claude"
       "codex"
+      "codex-app"
       "antigravity"
       "cap"
       "temurin@21"
