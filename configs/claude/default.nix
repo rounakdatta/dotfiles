@@ -77,6 +77,16 @@ let
           "Authorization: Bearer "
         ];
       };
+      google-maps = {
+        command = "bash";
+        args = [
+          "-c"
+          ''
+            exec env GOOGLE_MAPS_API_KEY="$(pass show api-keys/google-maps)" \
+              npx -y @cablate/mcp-google-map --stdio
+          ''
+        ];
+      };
     };
 
     projectLocal = [

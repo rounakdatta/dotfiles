@@ -5,6 +5,7 @@
     ./vim
     ./bash
     ./fish
+    ./npm
     ./gnupg
     ./ssh
     ./pass
