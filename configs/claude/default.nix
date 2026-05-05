@@ -62,10 +62,45 @@ let
       current="$parent"
     done
 
-    # Drop the closest ancestor: Claude already loads it natively as project-scope skills.
-    # The wrapper only contributes the ancestors *above* it, which Claude wouldn't discover.
-    if [ "''${#ancestor_skill_dirs[@]}" -gt 0 ]; then
-      ancestor_skill_dirs=("''${ancestor_skill_dirs[@]:1}")
+    # Compute Claude's native project-scope reach so the wrapper supplies only
+    # what's outside it. Claude reads <cwd>/.claude/skills/ unconditionally,
+    # then walks up while each ancestor has CLAUDE.md, picking up each
+    # ancestor's .claude/skills/. The wrapper plugin overlay handles only
+    # the ancestors that fall *outside* this reach. Set
+    # CLAUDE_HIERARCHICAL_SKILLS_NO_DEDUP=1 to disable and supply everything.
+    declare -A claude_native_skill_dirs=()
+    if [ "''${CLAUDE_HIERARCHICAL_SKILLS_NO_DEDUP:-}" != "1" ]; then
+      if [ -d "$PWD_REAL/.claude/skills" ]; then
+        claude_native_skill_dirs["$PWD_REAL/.claude/skills"]=1
+      fi
+      walk_current="$PWD_REAL"
+      while [ "$walk_current" != "/" ]; do
+        if [ ! -f "$walk_current/CLAUDE.md" ]; then
+          break
+        fi
+        walk_parent="$(dirname "$walk_current")"
+        if [ "$walk_parent" = "$walk_current" ]; then
+          break
+        fi
+        if [ -n "$HOME_REAL" ] && [ "$walk_parent" = "$HOME_REAL" ]; then
+          break
+        fi
+        if [ -d "$walk_parent/.claude/skills" ]; then
+          claude_native_skill_dirs["$walk_parent/.claude/skills"]=1
+        fi
+        walk_current="$walk_parent"
+      done
+    fi
+
+    filtered_skill_dirs=()
+    for d in "''${ancestor_skill_dirs[@]}"; do
+      if [ -z "''${claude_native_skill_dirs[$d]+x}" ]; then
+        filtered_skill_dirs+=("$d")
+      fi
+    done
+    ancestor_skill_dirs=()
+    if [ "''${#filtered_skill_dirs[@]}" -gt 0 ]; then
+      ancestor_skill_dirs=("''${filtered_skill_dirs[@]}")
     fi
 
     if [ "''${#ancestor_skill_dirs[@]}" -eq 0 ]; then
