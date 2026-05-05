@@ -5,6 +5,161 @@
 }:
 let
   homeDir = config.home.homeDirectory;
+  claudeWrapperScript = ''
+    set -euo pipefail
+
+    REAL_CLAUDE="''${CLAUDE_REAL_BINARY:-/opt/homebrew/bin/claude}"
+
+    case "''${1:-}" in
+      -h | --help | -v | --version | auth | auto-mode | doctor | install | mcp | plugin | plugins | setup-token | update | upgrade)
+        exec "$REAL_CLAUDE" "$@"
+        ;;
+    esac
+
+    for arg in "$@"; do
+      case "$arg" in
+        --bare)
+          exec "$REAL_CLAUDE" "$@"
+          ;;
+      esac
+    done
+
+    if [ "''${CLAUDE_HIERARCHICAL_SKILLS_DISABLE:-}" = "1" ]; then
+      exec "$REAL_CLAUDE" "$@"
+    fi
+
+    if [ ! -x "$REAL_CLAUDE" ]; then
+      printf 'claude wrapper: real Claude binary not executable: %s\n' "$REAL_CLAUDE" >&2
+      exit 127
+    fi
+
+    canonical_dir() {
+      (
+        cd "$1" 2>/dev/null && pwd -P
+      )
+    }
+
+    HOME_REAL="$(canonical_dir "''${HOME:-.}" || printf '%s\n' "''${HOME:-}")"
+    PWD_REAL="$(pwd -P)"
+
+    ancestor_skill_dirs=()
+    current="$PWD_REAL"
+
+    while [ "$current" != "/" ]; do
+      if [ -n "$HOME_REAL" ] && [ "$current" = "$HOME_REAL" ]; then
+        break
+      fi
+
+      skill_dir="$current/.claude/skills"
+      if [ -d "$skill_dir" ]; then
+        ancestor_skill_dirs+=("$skill_dir")
+      fi
+
+      parent="$(dirname "$current")"
+      if [ "$parent" = "$current" ]; then
+        break
+      fi
+      current="$parent"
+    done
+
+    if [ "''${#ancestor_skill_dirs[@]}" -eq 0 ]; then
+      if [ "''${CLAUDE_HIERARCHICAL_SKILLS_PRINT:-}" = "1" ]; then
+        printf 'real=%s\n' "$REAL_CLAUDE"
+        printf 'overlay=\n'
+        printf 'skills=0\n'
+        printf 'argv:'
+        printf ' %q' "$REAL_CLAUDE" "$@"
+        printf '\n'
+        exit 0
+      fi
+      exec "$REAL_CLAUDE" "$@"
+    fi
+
+    overlay_hash="$(printf '%s' "$PWD_REAL" | sha256sum | cut -d ' ' -f 1 | cut -c 1-16)"
+    overlay_parent="$HOME/.cache/claude-skill-overlays"
+    overlay_root="$overlay_parent/$overlay_hash.$$"
+    overlay_skills="$overlay_root/skills"
+    plugin_manifest="$overlay_root/.claude-plugin/plugin.json"
+
+    mkdir -p "$overlay_parent"
+    # Best-effort prune of orphaned per-session overlays older than a week.
+    find "$overlay_parent" -mindepth 1 -maxdepth 1 -type d -mtime +7 -exec rm -rf {} + 2>/dev/null || true
+
+    mkdir -p "$overlay_skills"
+    mkdir -p "$(dirname "$plugin_manifest")"
+    printf '%s\n' \
+      '{' \
+      '  "name": "hierarchical-skills",' \
+      '  "version": "0.1.0",' \
+      '  "author": {' \
+      '    "name": "dotfiles"' \
+      '  },' \
+      '  "description": "Session-only inherited skills assembled by the dotfiles Claude wrapper"' \
+      '}' > "$plugin_manifest"
+
+    declare -A seen_skills=()
+    selected_count=0
+
+    shopt -s nullglob
+    for skill_dir in "''${ancestor_skill_dirs[@]}"; do
+      for skill_path in "$skill_dir"/*; do
+        [ -d "$skill_path" ] || [ -L "$skill_path" ] || continue
+        [ -f "$skill_path/SKILL.md" ] || continue
+
+        skill_name="$(basename "$skill_path")"
+        if [ -n "''${seen_skills[$skill_name]+x}" ]; then
+          continue
+        fi
+
+        target="$overlay_skills/$skill_name"
+        ln -sfn "$(realpath "$skill_path")" "$target"
+        seen_skills["$skill_name"]=1
+        selected_count=$((selected_count + 1))
+      done
+    done
+    shopt -u nullglob
+
+    if [ "$selected_count" -eq 0 ]; then
+      rm -rf "$overlay_root"
+      if [ "''${CLAUDE_HIERARCHICAL_SKILLS_PRINT:-}" = "1" ]; then
+        printf 'real=%s\n' "$REAL_CLAUDE"
+        printf 'overlay=\n'
+        printf 'skills=0\n'
+        printf 'argv:'
+        printf ' %q' "$REAL_CLAUDE" "$@"
+        printf '\n'
+        exit 0
+      fi
+      exec "$REAL_CLAUDE" "$@"
+    fi
+
+    if [ "''${CLAUDE_HIERARCHICAL_SKILLS_DEBUG:-}" = "1" ]; then
+      printf 'claude wrapper: inherited skill overlay: %s\n' "$overlay_root" >&2
+      printf 'claude wrapper: ancestor skill dirs:\n' >&2
+      printf '  %s\n' "''${ancestor_skill_dirs[@]}" >&2
+    fi
+
+    if [ "''${CLAUDE_HIERARCHICAL_SKILLS_PRINT:-}" = "1" ]; then
+      printf 'real=%s\n' "$REAL_CLAUDE"
+      printf 'overlay=%s\n' "$overlay_root"
+      printf 'skills=%s\n' "$selected_count"
+      find "$overlay_skills" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -print | sort
+      printf 'argv:'
+      printf ' %q' "$REAL_CLAUDE" --plugin-dir "$overlay_root" "$@"
+      printf '\n'
+      exit 0
+    fi
+
+    exec "$REAL_CLAUDE" --plugin-dir "$overlay_root" "$@"
+  '';
+  claudeWrapper = pkgs.writeShellApplication {
+    name = "claude";
+    runtimeInputs = with pkgs; [
+      coreutils
+      findutils
+    ];
+    text = claudeWrapperScript;
+  };
 
   # Claude Code settings as a Nix attrset for better maintainability
   claudeSettings = {
@@ -141,6 +296,10 @@ let
   };
 in
 {
+  home.packages = lib.optionals pkgs.stdenv.isDarwin [
+    claudeWrapper
+  ];
+
   # Create ~/.claude directory and settings.json
   home.file.".claude/settings.json" = {
     text = builtins.toJSON claudeSettings;
