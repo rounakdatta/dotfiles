@@ -62,6 +62,12 @@ let
       current="$parent"
     done
 
+    # Drop the closest ancestor: Claude already loads it natively as project-scope skills.
+    # The wrapper only contributes the ancestors *above* it, which Claude wouldn't discover.
+    if [ "''${#ancestor_skill_dirs[@]}" -gt 0 ]; then
+      ancestor_skill_dirs=("''${ancestor_skill_dirs[@]:1}")
+    fi
+
     if [ "''${#ancestor_skill_dirs[@]}" -eq 0 ]; then
       if [ "''${CLAUDE_HIERARCHICAL_SKILLS_PRINT:-}" = "1" ]; then
         printf 'real=%s\n' "$REAL_CLAUDE"
