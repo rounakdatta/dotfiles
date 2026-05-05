@@ -38,6 +38,26 @@ in
         mkdir -p "$GENERATED_SKILLS_DIR"
         mkdir -p "$(dirname "$MANAGED_LINKS_FILE")"
 
+        expand_path() {
+          case "$1" in
+            "~")
+              printf '%s\n' "$HOME"
+              ;;
+            "~/"*)
+              printf '%s/%s\n' "$HOME" "''${1#"~/"}"
+              ;;
+            *)
+              printf '%s\n' "$1"
+              ;;
+          esac
+        }
+
+        root_skill_destination() {
+          root="$(expand_path "$1")"
+          root="''${root%/}"
+          printf '%s/.claude/skills\n' "$root"
+        }
+
         if [ ! -d "$CACHE_DIR" ]; then
           git clone -b ${cfg.privateRepo.ref} ${cfg.privateRepo.url} "$CACHE_DIR"
         else
@@ -68,15 +88,56 @@ in
           # Optional skill metadata:
           # {
           #   "enabled": true,
-          #   "destinations": ["~/.claude/skills", "~/work/byoc/.claude/skills"],
+          #   "global": false,
+          #   "roots": ["~/work/byoc"],
           #   "source": "https://github.com/owner/repo/tree/main/path/to/skill"
           # }
+          #
+          # Legacy "destinations" is still supported for exact install paths.
           if [ -f "$manifest" ]; then
             enabled="$("$JQ_BIN" -r '.enabled // true' "$manifest" 2>/dev/null || echo true)"
             if [ "$enabled" != "true" ]; then
               continue
             fi
-            destinations="$("$JQ_BIN" -r '(.destinations // ["~/.claude/skills"])[]' "$manifest" 2>/dev/null || echo "~/.claude/skills")"
+
+            if "$JQ_BIN" -e 'has("destinations")' "$manifest" >/dev/null 2>&1; then
+              destinations="$("$JQ_BIN" -r '(.destinations // [])[]' "$manifest" 2>/dev/null || true)"
+            else
+              destinations=""
+
+              if "$JQ_BIN" -e '.global == true' "$manifest" >/dev/null 2>&1; then
+                destinations="$SKILLS_DIR"
+              fi
+
+              roots="$("$JQ_BIN" -r '
+                def as_list:
+                  if type == "array" then .[]
+                  elif type == "string" then .
+                  else empty
+                  end;
+                (.roots // .projectRoots // .root // []) | as_list
+              ' "$manifest" 2>/dev/null || true)"
+
+              if [ -n "$roots" ]; then
+                root_destinations="$(printf '%s\n' "$roots" | while IFS= read -r root; do
+                  [ -n "$root" ] || continue
+                  root_skill_destination "$root"
+                done)"
+                if [ -n "$root_destinations" ]; then
+                  if [ -n "$destinations" ]; then
+                    destinations="$(printf '%s\n%s' "$destinations" "$root_destinations")"
+                  else
+                    destinations="$root_destinations"
+                  fi
+                fi
+              fi
+
+              if [ -z "$destinations" ]; then
+                echo "No global or roots configured for $skill_name; defaulting to user skills"
+                destinations="$SKILLS_DIR"
+              fi
+            fi
+
             source="$("$JQ_BIN" -r '.source // empty' "$manifest" 2>/dev/null || true)"
           fi
 
@@ -145,25 +206,16 @@ in
             resolved_skill_dir="$generated_skill_dir"
           fi
 
-          while IFS= read -r destination; do
+          printf '%s\n' "$destinations" | while IFS= read -r destination; do
             [ -n "$destination" ] || continue
 
-            case "$destination" in
-              "~")
-                destination="$HOME"
-                ;;
-              "~/"*)
-                destination="$HOME/''${destination#"~/"}"
-                ;;
-            esac
+            destination="$(expand_path "$destination")"
 
             mkdir -p "$destination"
             target="$destination/$skill_name"
             ln -sfn "$resolved_skill_dir" "$target"
             echo "$target" >> "$MANAGED_LINKS_FILE"
-          done <<EOF
-        $destinations
-        EOF
+          done
         done < <(
           if [ -d "$CACHE_DIR" ]; then
             find "$CACHE_DIR" \( -type f -name 'skill.json' -o -type f -name 'SKILL.md' \) -print0 | xargs -0 -I{} dirname "{}" | sort -u
