@@ -149,6 +149,7 @@
       } # r/LocalLLaMA ftw
       "google-drive"
       "rana-gmbh/netfluss/netfluss"
+      "alienator88-sentinel"
     ];
 
     # `mas search <>` can help pinpoint package name
