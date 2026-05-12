@@ -298,6 +298,30 @@ let
               "https://mcp-server.zomato.com/mcp"
             ];
           };
+          strava = {
+            command = "bash";
+            args = [
+              "-c"
+              ''
+                exec env \
+                  STRAVA_CLIENT_ID="$(pass show api-keys/strava-client-id)" \
+                  STRAVA_CLIENT_SECRET="$(pass show api-keys/strava-client-secret)" \
+                  STRAVA_ACCESS_TOKEN="$(pass show api-keys/strava-access-token)" \
+                  STRAVA_REFRESH_TOKEN="$(pass show api-keys/strava-refresh-token)" \
+                  npx -y @r-huijts/strava-mcp-server
+              ''
+            ];
+          };
+          hevy = {
+            command = "bash";
+            args = [
+              "-c"
+              ''
+                exec env HEVY_API_KEY="$(pass show api-keys/hevy)" \
+                  npx -y hevy-mcp
+              ''
+            ];
+          };
         };
       }
       {
