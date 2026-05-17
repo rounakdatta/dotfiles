@@ -151,6 +151,7 @@
       "rana-gmbh/netfluss/netfluss"
       "alienator88-sentinel"
       "monitorcontrol"
+      "supercmdlabs/supercmd/supercmd"
     ];
 
     # `mas search <>` can help pinpoint package name
