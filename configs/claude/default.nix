@@ -355,6 +355,12 @@ let
               ''
             ];
           };
+          notprod-lyric-deploy = {
+            command = "mic";
+            args = [
+              "mcp"
+            ];
+          };
         };
       }
     ];
