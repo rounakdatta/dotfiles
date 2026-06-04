@@ -105,7 +105,9 @@
       "dbeaver-community"
       "docker-desktop"
       "firefox"
-      "gcloud-cli"
+      # gcloud-cli intentionally lives in home.nix as the Nix `google-cloud-sdk`
+      # package: it bundles its own Python (macOS system python 3.9 is too old
+      # for gcloud) and lets us declare the gke-gcloud-auth-plugin component.
       "gpg-suite"
       "keka"
       "krita"
@@ -136,6 +138,7 @@
       "antigravity"
       "cap"
       "temurin@21"
+      "zulu@8" # native arm64 Java 8 for legacy Swing apps like the TDS RPU; temurin@8 is Intel-only
       "android-commandlinetools"
       "flutter"
       "handy" # fast, fast STT

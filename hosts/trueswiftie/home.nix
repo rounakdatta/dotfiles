@@ -41,6 +41,11 @@
       nixd
       nil
 
+      # google cloud sdk via nix (not the brew cask): bundles its own python so
+      # gcloud never trips over macOS's system python 3.9, and lets us declare
+      # the gke auth plugin instead of `gcloud components install` at activation.
+      (google-cloud-sdk.withExtraComponents [ google-cloud-sdk.components.gke-gcloud-auth-plugin ])
+
       # kubernetes related packages
       kubernetes-helm
       kind
