@@ -44,18 +44,20 @@
   # TODO: generalize the username here
   system.activationScripts.postActivation.text = ''
     chsh -s /run/current-system/sw/bin/fish ${user.username}
+
+    # Android SDK setup must run *after* Homebrew (the `homebrew` activation
+    # phase runs before `postActivation` but after `extraActivation`), because
+    # `sdkmanager` ships with the `android-commandlinetools` cask. Guarded so a
+    # first-time rebuild (before the cask exists) never aborts the whole switch.
+    # SDK installs to /opt/homebrew/share/android-commandlinetools by default.
+    if [ -x /opt/homebrew/bin/sdkmanager ]; then
+      yes | /opt/homebrew/bin/sdkmanager --licenses || true
+      /opt/homebrew/bin/sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmdline-tools;latest" || true
+    fi
   '';
 
   system.activationScripts.extraActivation.text = ''
     # there's no going back from Apple Silicon
     softwareupdate --install-rosetta --agree-to-license
-
-    # yes, we live up in the clouds
-    /opt/homebrew/bin/gcloud components install gke-gcloud-auth-plugin
-
-    # Android SDK setup - accept licenses first, then install
-    # SDK installs to /opt/homebrew/share/android-commandlinetools by default
-    yes | /opt/homebrew/bin/sdkmanager --licenses || true
-    /opt/homebrew/bin/sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmdline-tools;latest"
   '';
 }
