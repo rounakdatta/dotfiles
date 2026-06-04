@@ -26,7 +26,13 @@
       # zap: more aggressive cleanup but requires Full Disk Access permissions
       cleanup = "uninstall";
       upgrade = true;
-      extraFlags = [ "--verbose" ];
+      # --force-cleanup is required because Homebrew 4.x now refuses `brew bundle
+      # --cleanup` (which uninstalls casks/brews not in this file) unless an
+      # explicit force flag confirms the destructive cleanup. nix-darwin appends
+      # extraFlags to the bundle command, so this is the cleanest place for it.
+      # Without it, a fresh laptop (which bootstraps the newest brew) aborts
+      # activation with: `brew bundle install --cleanup` requires `--force` ...
+      extraFlags = [ "--verbose" "--force-cleanup" ];
     };
 
     # taps to open, let packages rain
