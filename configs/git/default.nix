@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
   user = import ../../lib/user.nix;
 in
@@ -36,18 +36,26 @@ in
 
   # TODO: Beware! As long as this activation is there, changes made above will not take effect
   # you gotta comment the following section out to make changes above take effect
+  # run after `passwordStore` so the store has been cloned before we read from it
   home.activation = {
-    createTokenIncludedGitHubHttpsConfig = ''
+    createTokenIncludedGitHubHttpsConfig = lib.hm.dag.entryAfter [ "passwordStore" ] ''
       export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
       export PATH="/usr/bin:$PATH"
 
       GITCONFIG_HTTPS_FILE=${config.home.homeDirectory}/.gitconfig.https
-      GH_PAT=$(gopass show github.com/pat)
 
-      cat > "$GITCONFIG_HTTPS_FILE" <<EOF
-      [url "https://rounakdatta:$GH_PAT@github.com/"]
-        insteadOf = https://github.com/
-      EOF
+      # On a fresh machine the password store may not be initialized/cloned yet
+      # (it needs the GPG key imported and the gitlab repo cloned first). In that
+      # case skip generating the file instead of aborting the whole activation;
+      # a later `home-manager switch` will populate it once gopass is set up.
+      if GH_PAT=$(gopass show github.com/pat 2>/dev/null); then
+        {
+          echo "[url \"https://rounakdatta:$GH_PAT@github.com/\"]"
+          echo "  insteadOf = https://github.com/"
+        } > "$GITCONFIG_HTTPS_FILE"
+      else
+        echo "warning: gopass not initialized or github.com/pat unavailable; skipping $GITCONFIG_HTTPS_FILE generation. Re-run 'home-manager switch' once the password store is set up." >&2
+      fi
     '';
   };
 }

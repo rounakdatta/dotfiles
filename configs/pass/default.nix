@@ -28,11 +28,16 @@ in
           git remote add origin git@gitlab.com:rounakdatta/pass.git
       fi
 
-      git fetch origin
-      git pull origin master
+      # On a fresh machine SSH keys to gitlab may not be set up yet; don't let a
+      # failed fetch/pull abort the whole home-manager activation. A later switch
+      # will sync the store once SSH access is in place.
+      if ! (git fetch origin && git pull origin master); then
+          echo "warning: could not sync password-store from gitlab (SSH keys set up yet?); skipping. Re-run 'home-manager switch' once access is configured." >&2
+      fi
 
-      echo "Y" | gopass-jsonapi configure --browser chrome --global=false --path=${config.home.homeDirectory}/.config/gopass
-      echo "Y" | gopass-jsonapi configure --browser firefox --global=false --path=${config.home.homeDirectory}/.config/gopass
+      # browser integration is best-effort; skip silently if gopass-jsonapi can't configure yet
+      echo "Y" | gopass-jsonapi configure --browser chrome --global=false --path=${config.home.homeDirectory}/.config/gopass || true
+      echo "Y" | gopass-jsonapi configure --browser firefox --global=false --path=${config.home.homeDirectory}/.config/gopass || true
     '';
   };
 }
