@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 let
   user = import ../../lib/user.nix;
+  passwordStoreDir = "${config.home.homeDirectory}/.password-store";
 in
 {
   programs.git = {
@@ -44,17 +45,23 @@ in
 
       GITCONFIG_HTTPS_FILE=${config.home.homeDirectory}/.gitconfig.https
 
-      # On a fresh machine the password store may not be initialized/cloned yet
-      # (it needs the GPG key imported and the gitlab repo cloned first). In that
-      # case skip generating the file instead of aborting the whole activation;
-      # a later `home-manager switch` will populate it once gopass is set up.
-      if GH_PAT=$(gopass show github.com/pat 2>/dev/null); then
+      # The password store is set up out-of-band (GPG key imported, gitlab repo
+      # cloned) and may not exist on the first switch of a fresh machine - it
+      # only lands on a later switch. So this step must be a no-op until the
+      # store is genuinely usable, and must never abort the activation.
+      #
+      # Gate on `.gpg-id` (gopass' marker for an initialized store) before
+      # touching gopass at all: this is deterministic, avoids the "password-store
+      # is not initialized" error, and sidesteps a pinentry hang on a
+      # half-configured store. Once the store is ready a later switch fills the
+      # file in. A missing include file is ignored by git, so skipping is safe.
+      if [ -f "${passwordStoreDir}/.gpg-id" ] && GH_PAT=$(gopass show github.com/pat 2>/dev/null) && [ -n "$GH_PAT" ]; then
         {
           echo "[url \"https://rounakdatta:$GH_PAT@github.com/\"]"
           echo "  insteadOf = https://github.com/"
         } > "$GITCONFIG_HTTPS_FILE"
       else
-        echo "warning: gopass not initialized or github.com/pat unavailable; skipping $GITCONFIG_HTTPS_FILE generation. Re-run 'home-manager switch' once the password store is set up." >&2
+        echo "note: password store not ready (github.com/pat unavailable); skipping $GITCONFIG_HTTPS_FILE. It will be generated on the next 'home-manager switch' after the store is set up." >&2
       fi
     '';
   };
