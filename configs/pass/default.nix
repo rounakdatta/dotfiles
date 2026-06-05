@@ -29,10 +29,18 @@ in
             git remote add origin git@gitlab.com:rounakdatta/pass.git
         fi
 
-        git fetch origin && git pull origin master
+        # non-interactive: never block activation on an SSH host-key/passphrase
+        # prompt. quietly skip the sync until gitlab access is set up out-of-band
+        export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+        if ! { git fetch origin && git pull origin master; } >/dev/null 2>&1; then
+            echo "note: skipping password-store sync (gitlab access not ready); will sync on a later switch"
+        fi
 
-        echo "Y" | gopass-jsonapi configure --browser chrome --global=false --path=${config.home.homeDirectory}/.config/gopass
-        echo "Y" | gopass-jsonapi configure --browser firefox --global=false --path=${config.home.homeDirectory}/.config/gopass
+        # browser integration needs an initialized store
+        if [ -f "$PW_DIR/.gpg-id" ]; then
+            echo "Y" | gopass-jsonapi configure --browser chrome --global=false --path=${config.home.homeDirectory}/.config/gopass
+            echo "Y" | gopass-jsonapi configure --browser firefox --global=false --path=${config.home.homeDirectory}/.config/gopass
+        fi
       ) || true
     '';
   };
