@@ -2,8 +2,8 @@
 let
   isDarwin = pkgs.stdenv.isDarwin;
   user = import ../../lib/user.nix;
-  # drop the exported, passphrase-protected secret key here on a fresh machine
-  gpgKeyImportPath = "${config.home.homeDirectory}/.gnupg/${user.gpgKey}.asc";
+  # the exported, passphrase-protected secret key lives here on a fresh machine
+  gpgKeyImportPath = "${config.home.homeDirectory}/.secrets/private.key";
 in
 {
   programs.gpg = {
