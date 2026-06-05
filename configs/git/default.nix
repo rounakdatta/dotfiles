@@ -1,6 +1,7 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
   user = import ../../lib/user.nix;
+  passwordStoreDir = "${config.home.homeDirectory}/.password-store";
 in
 {
   programs.git = {
@@ -37,17 +38,20 @@ in
   # TODO: Beware! As long as this activation is there, changes made above will not take effect
   # you gotta comment the following section out to make changes above take effect
   home.activation = {
-    createTokenIncludedGitHubHttpsConfig = ''
+    createTokenIncludedGitHubHttpsConfig = lib.hm.dag.entryAfter [ "passwordStore" ] ''
       export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
       export PATH="/usr/bin:$PATH"
 
       GITCONFIG_HTTPS_FILE=${config.home.homeDirectory}/.gitconfig.https
-      GH_PAT=$(gopass show github.com/pat)
 
-      cat > "$GITCONFIG_HTTPS_FILE" <<EOF
-      [url "https://rounakdatta:$GH_PAT@github.com/"]
-        insteadOf = https://github.com/
-      EOF
+      # the store is set up out-of-band, so this no-ops until `.gpg-id` exists;
+      # gating on it avoids gopass' "not initialized" error and a pinentry hang
+      if [ -f "${passwordStoreDir}/.gpg-id" ] && GH_PAT=$(gopass show github.com/pat 2>/dev/null) && [ -n "$GH_PAT" ]; then
+        {
+          echo "[url \"https://rounakdatta:$GH_PAT@github.com/\"]"
+          echo "  insteadOf = https://github.com/"
+        } > "$GITCONFIG_HTTPS_FILE"
+      fi
     '';
   };
 }

@@ -8,31 +8,32 @@ in
   };
 
   home.activation = {
+    # best-effort and re-runnable: gitlab SSH access is set up out-of-band, so
+    # the clone only succeeds on a later switch. the subshell + `|| true` keeps
+    # any failure (and the `cd`) from aborting or leaking into the rest of activation
     passwordStore = ''
-      PW_DIR=${passwordStoreDir}
+      (
+        PW_DIR=${passwordStoreDir}
 
-      if [ ! -d "$PW_DIR" ]; then
-          mkdir -p "$PW_DIR"
-      fi
-      cd $PW_DIR
+        mkdir -p "$PW_DIR"
+        cd "$PW_DIR" || exit 0
 
-      # the following PATH addition is to make sure that binaries like `git`, `emacs`, `ssh` are available for use
-      export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
-      # `ssh` is on the following path in darwin, so there we go
-      export PATH="/usr/bin:$PATH"
+        # `git`/`ssh`/`gopass-jsonapi` on PATH; `ssh` lives under /usr/bin on darwin
+        export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
+        export PATH="/usr/bin:$PATH"
 
-      git init
-      if git remote | grep -q origin; then
-          git remote set-url origin git@gitlab.com:rounakdatta/pass.git
-      else
-          git remote add origin git@gitlab.com:rounakdatta/pass.git
-      fi
+        git init
+        if git remote | grep -q origin; then
+            git remote set-url origin git@gitlab.com:rounakdatta/pass.git
+        else
+            git remote add origin git@gitlab.com:rounakdatta/pass.git
+        fi
 
-      git fetch origin
-      git pull origin master
+        git fetch origin && git pull origin master
 
-      echo "Y" | gopass-jsonapi configure --browser chrome --global=false --path=${config.home.homeDirectory}/.config/gopass
-      echo "Y" | gopass-jsonapi configure --browser firefox --global=false --path=${config.home.homeDirectory}/.config/gopass
+        echo "Y" | gopass-jsonapi configure --browser chrome --global=false --path=${config.home.homeDirectory}/.config/gopass
+        echo "Y" | gopass-jsonapi configure --browser firefox --global=false --path=${config.home.homeDirectory}/.config/gopass
+      ) || true
     '';
   };
 }
