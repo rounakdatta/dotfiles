@@ -1,6 +1,9 @@
 { config, pkgs, lib, ... }:
 let
   isDarwin = pkgs.stdenv.isDarwin;
+  user = import ../../lib/user.nix;
+  # the exported, passphrase-protected secret key lives here on a fresh machine
+  gpgKeyImportPath = "${config.home.homeDirectory}/.secrets/private.key";
 in
 {
   programs.gpg = {
@@ -24,4 +27,19 @@ in
       "${pkgs.gnupg}/bin/gpgconf" --launch gpg-agent || true
     ''
   );
+
+  # gopass/git decryption needs the private key, but on a fresh machine
+  # `gpg --list-secret-keys` is empty. Import it once from a known path: drop the
+  # armored key at gpgKeyImportPath and switch. Idempotent (skips if already in
+  # the keyring); `--batch --import` is non-interactive and needs no passphrase.
+  home.activation.importGpgKey = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    GPG="${pkgs.gnupg}/bin/gpg"
+    if ! "$GPG" --list-secret-keys ${user.gpgKey} >/dev/null 2>&1; then
+      if [ -f "${gpgKeyImportPath}" ]; then
+        "$GPG" --batch --import "${gpgKeyImportPath}" || true
+      else
+        echo "note: GPG secret key ${user.gpgKey} not in keyring; drop the armored key at ${gpgKeyImportPath} and re-run 'home-manager switch'"
+      fi
+    fi
+  '';
 }
