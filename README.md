@@ -18,6 +18,11 @@ Nix is my way of setting up and managing my computers. It's an entirely declarat
 
 ## Going ahead and using it
 
+```bash
+# on a new system, you wouldn't even have the nix CLI
+curl -sSf -L https://install.lix.systems/lix | sh -s -- install
+```
+
 Apply a configuration:
 
 ```bash
@@ -25,7 +30,7 @@ Apply a configuration:
 sudo nixos-rebuild switch --flake .#ninezeroes
 
 # macOS
-sudo darwin-rebuild switch --flake .#trueswiftie
+sudo nix run nix-darwin/nix-darwin-25.11#darwin-rebuild -- switch --flake .
 ```
 
 ## What else
