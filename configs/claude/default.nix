@@ -207,6 +207,24 @@ let
     autoUpdaterStatus = "disabled";
     cleanupPeriodDays = 99999;
     alwaysThinkingEnabled = true;
+
+    # Auto-approve nix-managed project-local MCP servers (from <repo>/.mcp.json).
+    # Supersedes the old stale enabledMcpjsonServers=["grafana"] (dropped: no server
+    # is named "grafana" anymore — they're notprod/prod-grafana-lyric now).
+    enableAllProjectMcpServers = true;
+
+    # Run in bypass-permissions mode: execute tool calls without per-action
+    # prompts. The rm -rf / and rm -rf ~ circuit breaker and any explicit
+    # `ask` rules still prompt. (Managed/enterprise settings can disable this
+    # org-wide; web sessions ignore it and fall back to a prompting mode.)
+    permissions.defaultMode = "bypassPermissions";
+
+    # Suppress the one-time "bypass permissions mode, do you accept?" startup
+    # warning. NOTE: not in the documented settings.json reference, so it may
+    # be a no-op on current Claude Code (the documented equivalent is the
+    # --dangerously-skip-permissions CLI flag). Kept to mirror upstream intent.
+    skipDangerousModePermissionPrompt = true;
+
     statusLine = {
       type = "command";
       command = "bash -c 'basename $(dirname $(pwd))/$(basename $(pwd)); git branch --show-current 2>/dev/null | xargs -I{} echo \" ({})\" || true; echo -n \" | \"; npx ccusage@latest statusline' | tr -d '\\n'";
