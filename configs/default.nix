@@ -15,5 +15,6 @@
     ./claude
     ./go
     ./claude-skills
+    ./atuin
   ];
 }

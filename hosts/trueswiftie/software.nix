@@ -37,8 +37,6 @@
 
     # taps to open, let packages rain
     taps = [
-      "homebrew/cask-versions"
-      "homebrew/services"
       "FairwindsOps/tap"
       "rajatjindal/tap"
       "metalbear-co/mirrord"

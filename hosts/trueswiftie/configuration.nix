@@ -12,9 +12,10 @@
 
   # nix-daemon is now managed automatically by nix-darwin
 
-  # Fix for GID mismatch after nix-darwin upgrade
-  # The default nixbld GID changed from 30000 to 350, but we keep the existing one
-  ids.gids.nixbld = 30000;
+  # Fix for GID mismatch after nix-darwin upgrade: nix-darwin's default nixbld
+  # GID moved from 30000 to 350. Pin to 350 to match the group already on the
+  # system; the stale 30000 pin aborted activation with a GID mismatch.
+  ids.gids.nixbld = 350;
 
   # Set primary user for Homebrew and other user-specific options
   system.primaryUser = user.username;
