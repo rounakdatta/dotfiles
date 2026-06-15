@@ -41,6 +41,11 @@
       nixd
       nil
 
+      # rust toolchain backing programs.cargo-packages; `cargo install` builds
+      # from source, so it leans on the system linker (Xcode CLT) for the cc step
+      cargo
+      rustc
+
       # google cloud sdk via nix (not the brew cask): bundles its own python so
       # gcloud never trips over macOS's system python 3.9, and lets us declare
       # the gke auth plugin instead of `gcloud components install` at activation.
@@ -116,6 +121,10 @@
 
     go-packages.packages = [
       "github.com/blacktop/mcp-tts@latest"
+    ];
+
+    cargo-packages.packages = [
+      "--git https://github.com/fu5ha/zed-workspaces"
     ];
   };
 }
