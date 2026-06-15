@@ -14,6 +14,7 @@
     ./emacs
     ./claude
     ./go
+    ./cargo
     ./claude-skills
     ./atuin
   ];
