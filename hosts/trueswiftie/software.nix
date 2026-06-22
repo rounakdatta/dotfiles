@@ -125,6 +125,7 @@
       "google-earth-pro"
       "calibre"
       "hiddenbar"
+      "hammerspoon" # drives the Claude desk-pet overlay (configs/hammerspoon)
       "obsidian"
       "mongodb-compass"
       "stremio"
