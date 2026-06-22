@@ -35,11 +35,13 @@ local SHOW_TIME = 4.0 -- seconds the bots hang before retreating
 local HIDE_TIME = 6.0 -- seconds hidden between peeks
 local SUMMON_EDGE = 4 -- mouse within this many px of the top edge summons them
 -- The name, fitted inside the bot body (fractions of SIZE, below the eyes).
-local MAXLABEL = 7 -- truncate longer names with … so they never overflow
-local LABEL_FONT = 11
-local LABEL_X = 0.22
+local LABEL_FONT = 11 -- max label size; the name shrinks to fit, down to MIN_FONT
+local MIN_FONT = 7 -- readable floor; below this we trim the name instead of shrinking
+local MONO_RATIO = 0.62 -- monospace advance width per point (slightly conservative)
+local LABEL_FONT_NAME = "Menlo-Bold" -- monospace => exact fit math, guaranteed no bleed
+local LABEL_X = 0.19
 local LABEL_Y = 0.50
-local LABEL_W = 0.56
+local LABEL_W = 0.62
 local LABEL_H = 0.20
 local LABEL_COLOR = { white = 1.0 }
 local HOVER = { red = 0.10, green = 0.10, blue = 0.12, alpha = 0.22 }
@@ -58,30 +60,55 @@ local function basename(p)
   return p:match("([^/]+)/?$")
 end
 
-local function windowName(pane)
+-- tmux window name + pane index for a pane (at display time), or nils if gone.
+-- One call, tab-separated (a tab can't appear in a tmux window name).
+local function windowInfo(pane)
   if not pane or pane == "" then
-    return nil
+    return nil, nil
   end
-  local out, ok = hs.execute(TMUX .. " display-message -pt '" .. pane .. "' '#{window_name}' 2>/dev/null")
+  local out, ok = hs.execute(TMUX .. " display-message -pt '" .. pane .. "' '#{window_name}\t#{pane_index}' 2>/dev/null")
   if not ok or not out then
-    return nil
+    return nil, nil
   end
-  out = out:gsub("%s+$", "")
-  if out == "" then
-    return nil
+  out = out:gsub("[\r\n]+$", "")
+  local name, idx = out:match("^(.-)\t(.*)$")
+  if not name then
+    name = out
   end
-  return out
+  if name == "" then
+    name = nil
+  end
+  if idx == "" then
+    idx = nil
+  end
+  return name, idx
 end
 
-local function fit(name)
-  if #name > MAXLABEL then
-    return name:sub(1, MAXLABEL - 1) .. "…"
+-- Largest font (<= LABEL_FONT, down to MIN_FONT) at which "name .. suffix" fits
+-- availW; below the floor, trim the NAME (always keeping the suffix). The label
+-- font is monospace, so width = chars * font * MONO_RATIO is exact and the text
+-- never bleeds out of the body. Returns (text, fontSize).
+local function fitLabel(name, suffix, availW)
+  local text = name .. suffix
+  if #text == 0 then
+    return text, LABEL_FONT
   end
-  return name
-end
-
-local function label(session)
-  return fit(windowName(session.tmux_pane) or basename(session.cwd) or "claude")
+  local font = availW / (#text * MONO_RATIO)
+  if font >= LABEL_FONT then
+    return text, LABEL_FONT
+  end
+  if font >= MIN_FONT then
+    return text, math.floor(font)
+  end
+  local maxChars = math.floor(availW / (MIN_FONT * MONO_RATIO))
+  local nameBudget = maxChars - #suffix
+  if nameBudget < 1 then
+    nameBudget = 1
+  end
+  if #name > nameBudget then
+    name = name:sub(1, nameBudget)
+  end
+  return name .. suffix, MIN_FONT
 end
 
 -- ----------------------------------------------- registry (focus-aware) --
@@ -202,7 +229,7 @@ local function makePendant(session, bobPhase, startY)
   c:appendElements({
     type = "text",
     text = "",
-    textFont = "Helvetica-Bold",
+    textFont = LABEL_FONT_NAME,
     textSize = LABEL_FONT,
     textColor = LABEL_COLOR,
     textAlignment = "center",
@@ -329,6 +356,16 @@ function M.evaluate()
     return (a.updated_at or 0) < (b.updated_at or 0)
   end)
 
+  -- Resolve each waiting session's tmux window name + pane index, and count how
+  -- many waiting sessions share a window, so we only disambiguate on collision.
+  local winCount = {}
+  for _, d in ipairs(waiting) do
+    local wname, pidx = windowInfo(d.tmux_pane)
+    d._wname = wname or basename(d.cwd) or "claude"
+    d._pidx = pidx
+    winCount[d._wname] = (winCount[d._wname] or 0) + 1
+  end
+
   local f, hiddenY = geom()
   local n = #waiting
   local present, created = {}, false
@@ -347,7 +384,12 @@ function M.evaluate()
     if p.curX == 0 then
       p.curX = p.targetX -- snap horizontally on first placement
     end
-    p.canvas[3].text = label(d)
+    -- "nix" when alone in its window; "nix (2)" (the pane index) when it shares.
+    -- Shrinks the font to fit rather than truncating; trims only as a last resort.
+    local suffix = (winCount[d._wname] >= 2 and d._pidx) and (" (" .. d._pidx .. ")") or ""
+    local text, font = fitLabel(d._wname, suffix, SIZE * LABEL_W)
+    p.canvas[3].text = text
+    p.canvas[3].textSize = font
   end
 
   for sid, p in pairs(M.pendants) do
