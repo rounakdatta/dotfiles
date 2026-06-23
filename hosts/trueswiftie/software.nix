@@ -1,6 +1,38 @@
-{ pkgs, ... }:
+{ pkgs, config, lib, ... }:
+let
+  # Homebrew 6 refuses to load formulae/casks from non-official ("untrusted")
+  # taps unless they're explicitly trusted (https://docs.brew.sh/Tap-Trust).
+  # nix-darwin's homebrew module has no trust option yet, so mirror what
+  # nix-homebrew's tap-trust support does (zhaofengli/nix-homebrew#157): run
+  # `brew trust --tap <tap>` for every third-party tap this config pulls from,
+  # before `brew bundle` runs (extraActivation precedes the homebrew phase).
+  # Trusting the whole tap is appropriate here: if it's in this file, we vouch
+  # for it. Tap names are lowercased to match how Homebrew normalizes them.
+  tapName = t: if builtins.isString t then t else t.name;
+  # "user/repo/leaf" (a fully-qualified brew/cask) -> [ "user/repo" ]; else [ ].
+  qualifiedTap = s:
+    let parts = lib.splitString "/" s;
+    in lib.optional (builtins.length parts >= 3)
+      (lib.toLower "${builtins.elemAt parts 0}/${builtins.elemAt parts 1}");
+  trustedTaps = lib.unique (
+    (map (t: lib.toLower (tapName t)) config.homebrew.taps)
+    ++ lib.concatMap (b: qualifiedTap (tapName b)) config.homebrew.brews
+    ++ lib.concatMap (c: qualifiedTap (tapName c)) config.homebrew.casks
+  );
+in
 {
   system.stateVersion = 5;
+
+  # Trust the declared third-party taps before `brew bundle` (see trustedTaps).
+  # Guarded + best-effort so it never aborts activation (and is a no-op on a
+  # brew old enough to predate the trust gate, which also lacks `brew trust`).
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    if [ -x /opt/homebrew/bin/brew ]; then
+      for tap in ${lib.escapeShellArgs trustedTaps}; do
+        /opt/homebrew/bin/brew trust --tap "$tap" >/dev/null 2>&1 || true
+      done
+    fi
+  '';
 
   environment = {
     # this is so that fish gets added to /etc/shells
