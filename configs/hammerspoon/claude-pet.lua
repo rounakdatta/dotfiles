@@ -22,7 +22,7 @@ local REGISTRY = os.getenv("HOME") .. "/.cache/claude-sessions"
 local TTL = 28800 -- ignore sessions stale > 8h
 
 -- Look & feel — tweak freely; the config auto-reloads on the next switch.
-local SIZE = 41 -- bot square (px); smaller => more fit across the top
+local SIZE = 56 -- bot square (px); smaller => more fit across the top
 local GAP = 10 -- space between bots
 local TOP_GAP = 6 -- gap below the menu bar when down
 local STEP = 0.03 -- render tick (~33fps)

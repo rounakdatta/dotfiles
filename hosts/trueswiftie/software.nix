@@ -4,8 +4,11 @@ let
   # taps unless they're explicitly trusted (https://docs.brew.sh/Tap-Trust).
   # nix-darwin's homebrew module has no trust option yet, so mirror what
   # nix-homebrew's tap-trust support does (zhaofengli/nix-homebrew#157): run
-  # `brew trust --tap <tap>` for every third-party tap this config pulls from,
-  # before `brew bundle` runs (extraActivation precedes the homebrew phase).
+  # `brew trust <tap>` for every third-party tap this config pulls from, before
+  # `brew bundle` runs (extraActivation precedes the homebrew phase) — and run it
+  # AS the primary user, because activation is root and Homebrew refuses to run
+  # as root (so trusting as root silently no-ops, which is why the first attempt
+  # failed). This matches the user the homebrew bundle itself runs as.
   # Trusting the whole tap is appropriate here: if it's in this file, we vouch
   # for it. Tap names are lowercased to match how Homebrew normalizes them.
   tapName = t: if builtins.isString t then t else t.name;
@@ -29,7 +32,7 @@ in
   system.activationScripts.extraActivation.text = lib.mkAfter ''
     if [ -x /opt/homebrew/bin/brew ]; then
       for tap in ${lib.escapeShellArgs trustedTaps}; do
-        /opt/homebrew/bin/brew trust --tap "$tap" >/dev/null 2>&1 || true
+        /usr/bin/sudo -n -u ${config.system.primaryUser} -H /opt/homebrew/bin/brew trust "$tap" >/dev/null 2>&1 || true
       done
     fi
   '';
