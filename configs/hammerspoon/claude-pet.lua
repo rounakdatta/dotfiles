@@ -10,7 +10,7 @@
 --   * Reach    — hovering a bot while it's down holds them all down, so you can
 --                click without racing the timer.
 --   * Summon   — flick the pointer to the very top edge to drop them in on demand.
---   * Named    — the tmux window name is fitted (truncated) inside the bot's body.
+--   * Named    — the tmux window name shrinks to fit inside the bot's body.
 --   * Click    — jump to that session's pane. Clear-on-arrival retracts its bot.
 --
 -- @TMUX@ and @LOGO@ are substituted by Nix at build time.
@@ -22,7 +22,7 @@ local REGISTRY = os.getenv("HOME") .. "/.cache/claude-sessions"
 local TTL = 28800 -- ignore sessions stale > 8h
 
 -- Look & feel — tweak freely; the config auto-reloads on the next switch.
-local SIZE = 84 -- bot square (px); smaller => more fit across the top
+local SIZE = 41 -- bot square (px); smaller => more fit across the top
 local GAP = 10 -- space between bots
 local TOP_GAP = 6 -- gap below the menu bar when down
 local STEP = 0.03 -- render tick (~33fps)
@@ -35,8 +35,8 @@ local SHOW_TIME = 4.0 -- seconds the bots hang before retreating
 local HIDE_TIME = 6.0 -- seconds hidden between peeks
 local SUMMON_EDGE = 4 -- mouse within this many px of the top edge summons them
 -- The name, fitted inside the bot body (fractions of SIZE, below the eyes).
-local LABEL_FONT = 11 -- max label size; the name shrinks to fit, down to MIN_FONT
-local MIN_FONT = 7 -- readable floor; below this we trim the name instead of shrinking
+local LABEL_FONT = math.max(5, math.floor(SIZE * 0.16)) -- max label size; scales with SIZE
+local MIN_FONT = math.max(4, math.floor(SIZE * 0.11)) -- floor; below this we trim instead of shrinking
 local MONO_RATIO = 0.62 -- monospace advance width per point (slightly conservative)
 local LABEL_FONT_NAME = "Menlo-Bold" -- monospace => exact fit math, guaranteed no bleed
 local LABEL_X = 0.19
@@ -145,18 +145,15 @@ local function readAll()
   return all
 end
 
--- Clear-on-arrival: persist a session as "seen" so it stops nagging. The
--- tracker hook re-arms it to "attention" on the next Stop.
+-- Clear-on-arrival: persist a session as "seen" so it stops nagging. The tracker
+-- is stateless and writes "attention" on any later Stop, so a session only
+-- re-nags if Claude actually produces another turn there. We mutate the record
+-- we just read (minus our internal _path) instead of re-listing the schema.
 local function markSeen(data)
-  hs.json.write({
-    session_id = data.session_id,
-    cwd = data.cwd,
-    state = "seen",
-    event = data.event,
-    tmux_pane = data.tmux_pane,
-    kitty_window = data.kitty_window,
-    updated_at = data.updated_at,
-  }, data._path, false, true)
+  data.state = "seen"
+  local path = data._path
+  data._path = nil
+  hs.json.write(data, path, false, true)
 end
 
 -- ------------------------------------------------- jump to waiting pane --
@@ -189,6 +186,9 @@ end
 -- ----------------------------------------------------------- geometry --
 local function geom()
   local screen = hs.screen.mainScreen()
+  if not screen then -- nil transiently during display reconfiguration (sleep/wake)
+    return nil
+  end
   local f = screen:frame()
   local full = screen:fullFrame()
   return f, full.y - SIZE - 2, f.y + TOP_GAP -- frame, hiddenY, hangY
@@ -245,6 +245,7 @@ local function makePendant(session, bobPhase, startY)
     session = session,
     bobPhase = bobPhase,
     hovered = false,
+    placed = false,
     curX = 0,
     curY = startY,
     targetX = 0,
@@ -279,9 +280,10 @@ local function tick()
     end
   end
   local summon = false
-  if hs.mouse.absolutePosition then
+  local screen = hs.screen.mainScreen()
+  if screen and hs.mouse.absolutePosition then
     local mp = hs.mouse.absolutePosition()
-    local full = hs.screen.mainScreen():fullFrame()
+    local full = screen:fullFrame()
     -- Only the center of the top edge summons, so it doesn't fight the menu
     -- bar (Apple/app menus on the left, status icons on the right).
     summon = mp ~= nil
@@ -307,6 +309,9 @@ local function tick()
   local show = M.phase ~= "hide"
 
   local _, hiddenY, hangY = geom()
+  if not hiddenY then -- no screen right now; skip this frame
+    return
+  end
   local any = false
   for sid, p in pairs(M.pendants) do
     any = true
@@ -353,7 +358,11 @@ function M.evaluate()
     end
   end
   table.sort(waiting, function(a, b)
-    return (a.updated_at or 0) < (b.updated_at or 0)
+    local au, bu = a.updated_at or 0, b.updated_at or 0
+    if au ~= bu then
+      return au < bu
+    end
+    return (a.session_id or "") < (b.session_id or "") -- stable order on ties
   end)
 
   -- Resolve each waiting session's tmux window name + pane index, and count how
@@ -367,6 +376,9 @@ function M.evaluate()
   end
 
   local f, hiddenY = geom()
+  if not f then -- no screen right now; try again on the next evaluate
+    return
+  end
   local n = #waiting
   local present, created = {}, false
   for i, d in ipairs(waiting) do
@@ -381,8 +393,9 @@ function M.evaluate()
     p.urgent = d._urgent == true
     p.dying = false
     p.targetX = slotX(f, n, i - 1)
-    if p.curX == 0 then
+    if not p.placed then
       p.curX = p.targetX -- snap horizontally on first placement
+      p.placed = true
     end
     -- "nix" when alone in its window; "nix (2)" (the pane index) when it shares.
     -- Shrinks the font to fit rather than truncating; trims only as a last resort.

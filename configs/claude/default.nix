@@ -202,17 +202,18 @@ let
     text = claudeWrapperScript;
   };
 
-  # --- Live session tracker (foundation for the tmux indicator + desk-pet) ---
+  # --- Live session tracker (drives the Hammerspoon desk-pet) ---
   # On each lifecycle hook, upsert ~/.cache/claude-sessions/<session_id>.json so
-  # external indicators can show which sessions are waiting on you. Producers are
-  # these hooks; consumers (tmux status bar, later the Hammerspoon overlay) just
-  # read the directory. State contract:
-  #   state = "working" | "attention" | "idle"   (attention => needs you)
-  # Stop + Notification(idle_prompt) => attention; both still fire under
-  # bypassPermissions (permission prompts don't, but these do). Captures
-  # $TMUX_PANE / $KITTY_WINDOW_ID from the inherited env so a consumer can later
-  # jump straight to the waiting pane. Always exits 0 so a hook can never wedge
-  # a session.
+  # the desk-pet overlay can show which sessions are waiting on you. Producers are
+  # these hooks; the consumer (configs/hammerspoon) just reads the directory.
+  # State contract:
+  #   attention  Stop / idle_prompt — finished, your move
+  #   asking     PreToolUse(AskUserQuestion) — blocked on a question (urgent)
+  #   working    UserPromptSubmit / PostToolUse;   idle  SessionStart
+  #   seen       written by the consumer on clear-on-arrival (not by this hook)
+  # Stop + Notification(idle_prompt) and the AskUserQuestion hooks all fire under
+  # bypassPermissions. Captures $TMUX_PANE from the env to locate the pane.
+  # Always exits 0 so a hook can never wedge a session.
   claudeSessionTracker = pkgs.writeShellApplication {
     name = "claude-session-tracker";
     runtimeInputs = with pkgs; [ coreutils findutils jq ];
@@ -226,7 +227,7 @@ let
       CWD="$(jq -r '.cwd // empty' <<<"$INPUT" 2>/dev/null || true)"
 
       DIR="$HOME/.cache/claude-sessions"
-      mkdir -p "$DIR"
+      mkdir -p "$DIR" 2>/dev/null || true
       F="$DIR/$SID.json"
 
       # Best-effort prune of stale files (>24h) in case SessionEnd never fired.
@@ -253,7 +254,7 @@ let
           ;;
       esac
 
-      NOW="$(date +%s)"
+      NOW="$(date +%s 2>/dev/null || echo 0)"
 
       if jq -n \
         --arg sid "$SID" \
@@ -261,9 +262,8 @@ let
         --arg state "$STATE" \
         --arg event "$EVENT" \
         --arg pane "''${TMUX_PANE:-}" \
-        --arg kitty "''${KITTY_WINDOW_ID:-}" \
         --argjson now "$NOW" \
-        '{session_id: $sid, cwd: $cwd, state: $state, event: $event, tmux_pane: $pane, kitty_window: $kitty, updated_at: $now}' \
+        '{session_id: $sid, cwd: $cwd, state: $state, event: $event, tmux_pane: $pane, updated_at: $now}' \
         >"$F.tmp" 2>/dev/null; then
         mv -f "$F.tmp" "$F" 2>/dev/null || true
       else
@@ -274,6 +274,8 @@ let
     '';
   };
   sessionTrackerCmd = "${claudeSessionTracker}/bin/claude-session-tracker";
+  # Every lifecycle event runs the same tracker command.
+  trackerHook = [{ type = "command"; command = sessionTrackerCmd; }];
 
   # Claude Code settings as a Nix attrset for better maintainability
   claudeSettings = {
@@ -306,38 +308,23 @@ let
       CLAUDE_CODE_EFFORT_LEVEL = "max";
     };
     hooks = {
-      # Live session tracking (see claudeSessionTracker above). Each event upserts
-      # the per-session state file consumed by the tmux indicator / desk-pet.
+      # Live session tracking (see claudeSessionTracker above). Every event upserts
+      # the per-session state file the desk-pet (configs/hammerspoon) reads.
       #
       # PreToolUse on AskUserQuestion => "asking": Claude is blocked on a question,
       # the most urgent "needs you" signal (the bot bounces even in the focused
       # pane). PostToolUse clears it back to "working" once you've answered.
-      # NOTE: hooks for the built-in AskUserQuestion tool are undocumented; this is
-      # the expected signal — confirm via ~/.cache/claude-sessions on the next ask.
-      PreToolUse = [
-        { matcher = "AskUserQuestion"; hooks = [{ type = "command"; command = sessionTrackerCmd; }]; }
-      ];
-      UserPromptSubmit = [
-        { hooks = [{ type = "command"; command = sessionTrackerCmd; }]; }
-      ];
-      Stop = [
-        { hooks = [{ type = "command"; command = sessionTrackerCmd; }]; }
-      ];
-      Notification = [
-        { matcher = "idle_prompt"; hooks = [{ type = "command"; command = sessionTrackerCmd; }]; }
-      ];
-      SessionStart = [
-        { hooks = [{ type = "command"; command = sessionTrackerCmd; }]; }
-      ];
-      SessionEnd = [
-        { hooks = [{ type = "command"; command = sessionTrackerCmd; }]; }
-      ];
+      # (Hooks for the built-in AskUserQuestion tool are undocumented but confirmed
+      # to fire — verified live via ~/.cache/claude-sessions.)
+      PreToolUse = [{ matcher = "AskUserQuestion"; hooks = trackerHook; }];
+      UserPromptSubmit = [{ hooks = trackerHook; }];
+      Stop = [{ hooks = trackerHook; }];
+      Notification = [{ matcher = "idle_prompt"; hooks = trackerHook; }];
+      SessionStart = [{ hooks = trackerHook; }];
+      SessionEnd = [{ hooks = trackerHook; }];
 
       PostToolUse = [
-        {
-          matcher = "AskUserQuestion";
-          hooks = [{ type = "command"; command = sessionTrackerCmd; }];
-        }
+        { matcher = "AskUserQuestion"; hooks = trackerHook; }
         {
           matcher = "Bash";
           hooks = [
