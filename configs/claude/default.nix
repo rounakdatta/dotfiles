@@ -202,6 +202,81 @@ let
     text = claudeWrapperScript;
   };
 
+  # --- Live session tracker (drives the Hammerspoon desk-pet) ---
+  # On each lifecycle hook, upsert ~/.cache/claude-sessions/<session_id>.json so
+  # the desk-pet overlay can show which sessions are waiting on you. Producers are
+  # these hooks; the consumer (configs/hammerspoon) just reads the directory.
+  # State contract:
+  #   attention  Stop / idle_prompt — finished, your move
+  #   asking     PreToolUse(AskUserQuestion) — blocked on a question (urgent)
+  #   working    UserPromptSubmit / PostToolUse;   idle  SessionStart
+  #   seen       written by the consumer on clear-on-arrival (not by this hook)
+  # Stop + Notification(idle_prompt) and the AskUserQuestion hooks all fire under
+  # bypassPermissions. Captures $TMUX_PANE from the env to locate the pane.
+  # Always exits 0 so a hook can never wedge a session.
+  claudeSessionTracker = pkgs.writeShellApplication {
+    name = "claude-session-tracker";
+    runtimeInputs = with pkgs; [ coreutils findutils jq ];
+    text = ''
+      INPUT="$(cat)"
+
+      SID="$(jq -r '.session_id // empty' <<<"$INPUT" 2>/dev/null || true)"
+      [ -n "$SID" ] || exit 0
+
+      EVENT="$(jq -r '.hook_event_name // empty' <<<"$INPUT" 2>/dev/null || true)"
+      CWD="$(jq -r '.cwd // empty' <<<"$INPUT" 2>/dev/null || true)"
+
+      DIR="$HOME/.cache/claude-sessions"
+      mkdir -p "$DIR" 2>/dev/null || true
+      F="$DIR/$SID.json"
+
+      # Best-effort prune of stale files (>24h) in case SessionEnd never fired.
+      find "$DIR" -maxdepth 1 -type f -name '*.json' -mmin +1440 -delete 2>/dev/null || true
+
+      case "$EVENT" in
+        SessionEnd)
+          rm -f "$F"
+          exit 0
+          ;;
+        PreToolUse)
+          # Only the interactive AskUserQuestion tool is wired to this event, so
+          # reaching here means Claude is blocked asking the user something.
+          STATE="asking"
+          ;;
+        UserPromptSubmit | PostToolUse)
+          STATE="working"
+          ;;
+        Stop | Notification)
+          STATE="attention"
+          ;;
+        *)
+          STATE="idle"
+          ;;
+      esac
+
+      NOW="$(date +%s 2>/dev/null || echo 0)"
+
+      if jq -n \
+        --arg sid "$SID" \
+        --arg cwd "$CWD" \
+        --arg state "$STATE" \
+        --arg event "$EVENT" \
+        --arg pane "''${TMUX_PANE:-}" \
+        --argjson now "$NOW" \
+        '{session_id: $sid, cwd: $cwd, state: $state, event: $event, tmux_pane: $pane, updated_at: $now}' \
+        >"$F.tmp" 2>/dev/null; then
+        mv -f "$F.tmp" "$F" 2>/dev/null || true
+      else
+        rm -f "$F.tmp" 2>/dev/null || true
+      fi
+
+      exit 0
+    '';
+  };
+  sessionTrackerCmd = "${claudeSessionTracker}/bin/claude-session-tracker";
+  # Every lifecycle event runs the same tracker command.
+  trackerHook = [{ type = "command"; command = sessionTrackerCmd; }];
+
   # Claude Code settings as a Nix attrset for better maintainability
   claudeSettings = {
     autoUpdaterStatus = "disabled";
@@ -233,7 +308,23 @@ let
       CLAUDE_CODE_EFFORT_LEVEL = "max";
     };
     hooks = {
+      # Live session tracking (see claudeSessionTracker above). Every event upserts
+      # the per-session state file the desk-pet (configs/hammerspoon) reads.
+      #
+      # PreToolUse on AskUserQuestion => "asking": Claude is blocked on a question,
+      # the most urgent "needs you" signal (the bot bounces even in the focused
+      # pane). PostToolUse clears it back to "working" once you've answered.
+      # (Hooks for the built-in AskUserQuestion tool are undocumented but confirmed
+      # to fire — verified live via ~/.cache/claude-sessions.)
+      PreToolUse = [{ matcher = "AskUserQuestion"; hooks = trackerHook; }];
+      UserPromptSubmit = [{ hooks = trackerHook; }];
+      Stop = [{ hooks = trackerHook; }];
+      Notification = [{ matcher = "idle_prompt"; hooks = trackerHook; }];
+      SessionStart = [{ hooks = trackerHook; }];
+      SessionEnd = [{ hooks = trackerHook; }];
+
       PostToolUse = [
+        { matcher = "AskUserQuestion"; hooks = trackerHook; }
         {
           matcher = "Bash";
           hooks = [

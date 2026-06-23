@@ -17,5 +17,6 @@
     ./cargo
     ./claude-skills
     ./atuin
+    ./hammerspoon
   ];
 }
