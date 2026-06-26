@@ -7,11 +7,11 @@
 --     (attention/asking). Peeks in on a rhythm, holds while hovered, can be
 --     summoned to the top edge, wears its tmux window name, and clicks through
 --     to its pane. A blocked question (asking) bounces hard until answered.
---   * WORKING (grey, top-left, smaller) — one per session currently working.
---     They just hang there and vibrate; an ambient "how many are grinding"
---     count. No label, no click. When a session finishes, its grey working bot
---     vanishes and an orange waiting bot appears — the whole lifecycle at a
---     glance.
+--   * WORKING (grey, left edge, smaller) — one per session currently working,
+--     stacked in a column centered on the left edge. They just sit there and
+--     gently vibrate; an ambient "how many are grinding" count. No label, no
+--     click. When a session finishes, its grey working bot slides off the left
+--     edge and an orange waiting bot appears — the whole lifecycle at a glance.
 --
 -- @TMUX@, @LOGO@ and @LOGO_WORKING@ are substituted by Nix at build time.
 
@@ -208,8 +208,9 @@ local function slotX(f, n, i) -- waiting bot i (0-based) of n, centered row (top
   return f.x + (f.w - total) / 2 + i * (SIZE + GAP)
 end
 
-local function workSlotX(f, i) -- working bot i (0-based), left-anchored row (top-left)
-  return f.x + WORK_MARGIN + i * (WORK_SIZE + GAP)
+local function workSlotY(f, n, i) -- working bot i (0-based) of n, vertical column centered on the left edge
+  local total = n * WORK_SIZE + (n - 1) * GAP
+  return f.y + (f.h - total) / 2 + i * (WORK_SIZE + GAP)
 end
 
 -- ------------------------------------------------------------- pendants --
@@ -281,9 +282,9 @@ local function makePendant(session, bobPhase, startY)
   return pend
 end
 
--- Working bot: just the dimmed grey logo, no label, no interaction.
-local function makeWorkingPendant(session, vibPhase, startY)
-  local c = hs.canvas.new({ x = 0, y = startY, w = WORK_SIZE, h = WORK_SIZE })
+-- Working bot: just the grey logo, no label, no interaction.
+local function makeWorkingPendant(session, vibPhase, startX, slotY)
+  local c = hs.canvas.new({ x = startX, y = slotY, w = WORK_SIZE, h = WORK_SIZE })
   if WORK_IMG then
     c:appendElements({
       type = "image",
@@ -309,9 +310,9 @@ local function makeWorkingPendant(session, vibPhase, startY)
     session = session,
     vibPhase = vibPhase,
     placed = false,
-    curX = 0,
-    curY = startY,
-    targetX = 0,
+    curX = startX,
+    curY = slotY,
+    targetY = slotY,
     dying = false,
   }
 end
@@ -373,17 +374,18 @@ local function tick()
     end
   end
 
-  -- Working bots: grey, top-left, always shown while working, vibrating.
-  local wHiddenY = full.y - WORK_SIZE - 2
+  -- Working bots: grey, left edge, vertically centered, always shown while
+  -- working, sliding in from the left and gently vibrating.
+  local wHiddenX = full.x - WORK_SIZE - 2
   for sid, p in pairs(M.working) do
     any = true
-    local targetY = p.dying and wHiddenY or hangY
-    p.curX = p.curX + (p.targetX - p.curX) * EASE
-    p.curY = p.curY + (targetY - p.curY) * EASE
+    local targetX = p.dying and wHiddenX or (f.x + WORK_MARGIN)
+    p.curX = p.curX + (targetX - p.curX) * EASE
+    p.curY = p.curY + (p.targetY - p.curY) * EASE
     local vx = VIB_AMPL * math.sin(t * VIB_W + p.vibPhase)
     local vy = VIB_AMPL * math.sin(t * VIB_W * 1.7 + p.vibPhase)
     p.canvas:topLeft({ x = p.curX + vx, y = p.curY + vy })
-    if p.dying and math.abs(p.curY - wHiddenY) < 1.0 then
+    if p.dying and math.abs(p.curX - wHiddenX) < 1.0 then
       p.canvas:delete()
       M.working[sid] = nil
     end
@@ -449,7 +451,7 @@ function M.evaluate()
     return
   end
   local hiddenY = full.y - SIZE - 2
-  local wHiddenY = full.y - WORK_SIZE - 2
+  local wHiddenX = full.x - WORK_SIZE - 2
 
   -- Reconcile the waiting bots (orange, top-middle).
   local n = #waiting
@@ -483,20 +485,22 @@ function M.evaluate()
     end
   end
 
-  -- Reconcile the working bots (grey, top-left).
+  -- Reconcile the working bots (grey, left edge, vertical column).
   local wpresent = {}
+  local wn = #busy
   for i, d in ipairs(busy) do
     wpresent[d.session_id] = true
     local p = M.working[d.session_id]
+    local slotY = workSlotY(f, wn, i - 1)
     if not p then
-      p = makeWorkingPendant(d, (i - 1) * 0.9, wHiddenY)
+      p = makeWorkingPendant(d, (i - 1) * 0.9, wHiddenX, slotY)
       M.working[d.session_id] = p
     end
     p.session = d
     p.dying = false
-    p.targetX = workSlotX(f, i - 1)
+    p.targetY = slotY
     if not p.placed then
-      p.curX = p.targetX
+      p.curY = p.targetY -- snap vertically on first placement
       p.placed = true
     end
   end
