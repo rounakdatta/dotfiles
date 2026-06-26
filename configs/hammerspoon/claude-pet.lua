@@ -36,11 +36,11 @@ local SHOW_TIME = 4.0 -- seconds the waiting bots hang before retreating
 local HIDE_TIME = 6.0 -- seconds hidden between peeks
 local SUMMON_EDGE = 4 -- mouse within this many px of the top edge summons them
 -- Working bots (grey, top-left, vibrating).
-local WORK_SIZE = 36 -- working bot square (px); smaller than the waiting bots
+local WORK_SIZE = 26 -- working bot square (px); smaller than the waiting bots
 local WORK_MARGIN = 16 -- gap from the left screen edge
-local WORK_ALPHA = 0.72 -- dim the black logo to a grey-black, ambient look
-local VIB_AMPL = 2 -- vibrate amplitude, px
-local VIB_PERIOD = 0.13 -- vibrate period (~8 Hz buzz)
+local WORK_ALPHA = 1.0 -- the asset is already grey, so show it at full opacity
+local VIB_AMPL = 1.5 -- vibrate amplitude, px (small = gentle sway, not a buzz)
+local VIB_PERIOD = 0.5 -- vibrate period (~2 Hz; slow enough to read as a wobble)
 -- The waiting-bot name, fitted inside the body (fractions of SIZE, below the eyes).
 local LABEL_FONT = math.max(5, math.floor(SIZE * 0.16)) -- max label size; scales with SIZE
 local MIN_FONT = math.max(4, math.floor(SIZE * 0.11)) -- floor; below this we trim instead of shrinking
