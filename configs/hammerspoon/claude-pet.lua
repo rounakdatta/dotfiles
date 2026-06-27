@@ -1,28 +1,29 @@
 -- Claude Code desk-pets
 --
--- One Claude Code bot (the orange pixel creature) per waiting session, along the
--- top-middle of the screen. Reads the ~/.cache/claude-sessions registry written
--- by the claude-session-tracker hook (see configs/claude).
+-- Two squads of Claude Code bots, both reading the ~/.cache/claude-sessions
+-- registry written by the claude-session-tracker hook (see configs/claude):
 --
--- Interface:
---   * Rhythm   — the bots peek in, hang for SHOW_TIME, retreat, wait HIDE_TIME,
---                and come back. A new waiting session triggers an instant peek.
---   * Reach    — hovering a bot while it's down holds them all down, so you can
---                click without racing the timer.
---   * Summon   — flick the pointer to the very top edge to drop them in on demand.
---   * Named    — the tmux window name shrinks to fit inside the bot's body.
---   * Click    — jump to that session's pane. Clear-on-arrival retracts its bot.
+--   * WAITING (orange, top-middle) — one per session that needs you
+--     (attention/asking). Peeks in on a rhythm, holds while hovered, can be
+--     summoned to the top edge, wears its tmux window name, and clicks through
+--     to its pane. A blocked question (asking) bounces hard until answered.
+--   * WORKING (grey, left edge, smaller) — one per session currently working,
+--     stacked in a column centered on the left edge. They just sit there and
+--     gently vibrate; an ambient "how many are grinding" count. No label, no
+--     click. When a session finishes, its grey working bot slides off the left
+--     edge and an orange waiting bot appears — the whole lifecycle at a glance.
 --
--- @TMUX@ and @LOGO@ are substituted by Nix at build time.
+-- @TMUX@, @LOGO@ and @LOGO_WORKING@ are substituted by Nix at build time.
 
 local TMUX = "@TMUX@"
 local LOGO = "@LOGO@"
+local LOGO_WORKING = "@LOGO_WORKING@"
 local TERMINAL_APP = "kitty" -- frontmost app name that means "you're in the terminal"
 local REGISTRY = os.getenv("HOME") .. "/.cache/claude-sessions"
 local TTL = 28800 -- ignore sessions stale > 8h
 
 -- Look & feel — tweak freely; the config auto-reloads on the next switch.
-local SIZE = 56 -- bot square (px); smaller => more fit across the top
+local SIZE = 56 -- waiting bot square (px)
 local GAP = 10 -- space between bots
 local TOP_GAP = 6 -- gap below the menu bar when down
 local STEP = 0.03 -- render tick (~33fps)
@@ -31,10 +32,16 @@ local BOB_AMPL = 3 -- idle bob height, px
 local BOB_URGENT = 9 -- bob height for an "asking" bot (Claude blocked on a question)
 local BOB_PERIOD = 2.6 -- idle bob period, seconds
 local CASCADE = 26 -- per-bot drop-in stagger, px of head start
-local SHOW_TIME = 4.0 -- seconds the bots hang before retreating
+local SHOW_TIME = 4.0 -- seconds the waiting bots hang before retreating
 local HIDE_TIME = 6.0 -- seconds hidden between peeks
 local SUMMON_EDGE = 4 -- mouse within this many px of the top edge summons them
--- The name, fitted inside the bot body (fractions of SIZE, below the eyes).
+-- Working bots (grey, top-left, vibrating).
+local WORK_SIZE = 26 -- working bot square (px); smaller than the waiting bots
+local WORK_MARGIN = 16 -- gap from the left screen edge
+local WORK_ALPHA = 1.0 -- the asset is already grey, so show it at full opacity
+local VIB_AMPL = 1.5 -- vibrate amplitude, px (small = gentle sway, not a buzz)
+local VIB_PERIOD = 0.5 -- vibrate period (~2 Hz; slow enough to read as a wobble)
+-- The waiting-bot name, fitted inside the body (fractions of SIZE, below the eyes).
 local LABEL_FONT = math.max(5, math.floor(SIZE * 0.16)) -- max label size; scales with SIZE
 local MIN_FONT = math.max(4, math.floor(SIZE * 0.11)) -- floor; below this we trim instead of shrinking
 local MONO_RATIO = 0.62 -- monospace advance width per point (slightly conservative)
@@ -48,9 +55,11 @@ local HOVER = { red = 0.10, green = 0.10, blue = 0.12, alpha = 0.22 }
 local CLEARC = { white = 0, alpha = 0 }
 
 local LOGO_IMG = hs.image.imageFromPath(LOGO)
+local WORK_IMG = hs.image.imageFromPath(LOGO_WORKING)
 local BOB_W = 2 * math.pi / BOB_PERIOD
+local VIB_W = 2 * math.pi / VIB_PERIOD
 
-local M = { pendants = {}, phase = "show", phaseStart = 0 }
+local M = { pendants = {}, working = {}, phase = "show", phaseStart = 0 }
 
 -- ---------------------------------------------------------------- helpers --
 local function basename(p)
@@ -184,23 +193,28 @@ wid="$(%s display-message -pt '%s' '#{window_id}' 2>/dev/null)"
 end
 
 -- ----------------------------------------------------------- geometry --
-local function geom()
+-- Frame (usable area, below the menu bar) and fullFrame (whole display), or nil
+-- transiently during display reconfiguration (sleep/wake, monitor hotplug).
+local function screenGeom()
   local screen = hs.screen.mainScreen()
-  if not screen then -- nil transiently during display reconfiguration (sleep/wake)
+  if not screen then
     return nil
   end
-  local f = screen:frame()
-  local full = screen:fullFrame()
-  return f, full.y - SIZE - 2, f.y + TOP_GAP -- frame, hiddenY, hangY
+  return screen:frame(), screen:fullFrame()
 end
 
-local function slotX(f, n, i) -- x for bot i (0-based) of n, centered row (top-middle)
+local function slotX(f, n, i) -- waiting bot i (0-based) of n, centered row (top-middle)
   local total = n * SIZE + (n - 1) * GAP
   return f.x + (f.w - total) / 2 + i * (SIZE + GAP)
 end
 
--- ------------------------------------------------------------- pendant --
--- Element order: 1 = hover backing, 2 = bot, 3 = label (inside the body).
+local function workSlotY(f, n, i) -- working bot i (0-based) of n, vertical column centered on the left edge
+  local total = n * WORK_SIZE + (n - 1) * GAP
+  return f.y + (f.h - total) / 2 + i * (WORK_SIZE + GAP)
+end
+
+-- ------------------------------------------------------------- pendants --
+-- Waiting bot. Element order: 1 = hover backing, 2 = bot, 3 = label.
 local function makePendant(session, bobPhase, startY)
   local c = hs.canvas.new({ x = 0, y = startY, w = SIZE, h = SIZE })
   c:appendElements({
@@ -268,11 +282,52 @@ local function makePendant(session, bobPhase, startY)
   return pend
 end
 
+-- Working bot: just the grey logo, no label, no interaction.
+local function makeWorkingPendant(session, vibPhase, startX, slotY)
+  local c = hs.canvas.new({ x = startX, y = slotY, w = WORK_SIZE, h = WORK_SIZE })
+  if WORK_IMG then
+    c:appendElements({
+      type = "image",
+      image = WORK_IMG,
+      imageScaling = "scaleProportionally",
+      imageAlpha = WORK_ALPHA,
+      frame = { x = 0, y = 0, w = WORK_SIZE, h = WORK_SIZE },
+    })
+  else
+    c:appendElements({
+      type = "text",
+      text = "🤖",
+      textSize = WORK_SIZE * 0.5,
+      textAlignment = "center",
+      frame = { x = 0, y = WORK_SIZE * 0.25, w = WORK_SIZE, h = WORK_SIZE * 0.5 },
+    })
+  end
+  c:level(hs.canvas.windowLevels.overlay)
+  c:behaviorAsLabels({ "canJoinAllSpaces", "stationary" })
+  c:show()
+  return {
+    canvas = c,
+    session = session,
+    vibPhase = vibPhase,
+    placed = false,
+    curX = startX,
+    curY = slotY,
+    targetY = slotY,
+    dying = false,
+  }
+end
+
 -- ------------------------------------------- render + visibility director --
 local function tick()
   local t = hs.timer.secondsSinceEpoch()
+  local f, full = screenGeom()
+  if not f then -- no screen right now; skip this frame
+    return
+  end
+  local hangY = f.y + TOP_GAP
 
-  -- Hold the bots down while hovered or while the pointer is at the top edge.
+  -- Waiting visibility director: hold down while hovered, summoned (pointer at
+  -- top-center edge), or any session is asking; otherwise peek on a rhythm.
   local hovering = false
   for _, p in pairs(M.pendants) do
     if p.hovered then
@@ -280,25 +335,19 @@ local function tick()
     end
   end
   local summon = false
-  local screen = hs.screen.mainScreen()
-  if screen and hs.mouse.absolutePosition then
+  if hs.mouse.absolutePosition then
     local mp = hs.mouse.absolutePosition()
-    local full = screen:fullFrame()
-    -- Only the center of the top edge summons, so it doesn't fight the menu
-    -- bar (Apple/app menus on the left, status icons on the right).
     summon = mp ~= nil
       and mp.y <= full.y + SUMMON_EDGE
       and mp.x >= full.x + full.w * 0.30
       and mp.x <= full.x + full.w * 0.70
   end
-
   local anyUrgent = false
   for _, p in pairs(M.pendants) do
     if p.urgent then
       anyUrgent = true
     end
   end
-
   if hovering or summon or anyUrgent then
     M.phase = "show" -- a pending question keeps them down until you answer
     M.phaseStart = t
@@ -308,11 +357,10 @@ local function tick()
   end
   local show = M.phase ~= "hide"
 
-  local _, hiddenY, hangY = geom()
-  if not hiddenY then -- no screen right now; skip this frame
-    return
-  end
   local any = false
+
+  -- Waiting bots: orange, top-middle, peek + bob.
+  local hiddenY = full.y - SIZE - 2
   for sid, p in pairs(M.pendants) do
     any = true
     local targetY = (p.dying or not show) and hiddenY or hangY
@@ -325,6 +373,24 @@ local function tick()
       M.pendants[sid] = nil
     end
   end
+
+  -- Working bots: grey, left edge, vertically centered, always shown while
+  -- working, sliding in from the left and gently vibrating.
+  local wHiddenX = full.x - WORK_SIZE - 2
+  for sid, p in pairs(M.working) do
+    any = true
+    local targetX = p.dying and wHiddenX or (f.x + WORK_MARGIN)
+    p.curX = p.curX + (targetX - p.curX) * EASE
+    p.curY = p.curY + (p.targetY - p.curY) * EASE
+    local vx = VIB_AMPL * math.sin(t * VIB_W + p.vibPhase)
+    local vy = VIB_AMPL * math.sin(t * VIB_W * 1.7 + p.vibPhase)
+    p.canvas:topLeft({ x = p.curX + vx, y = p.curY + vy })
+    if p.dying and math.abs(p.curX - wHiddenX) < 1.0 then
+      p.canvas:delete()
+      M.working[sid] = nil
+    end
+  end
+
   if not any and M.render then
     M.render:stop()
     M.render = nil
@@ -338,10 +404,18 @@ local function ensureRender()
 end
 
 -- ------------------------------------------------------------- main loop --
+local function byTime(a, b)
+  local au, bu = a.updated_at or 0, b.updated_at or 0
+  if au ~= bu then
+    return au < bu
+  end
+  return (a.session_id or "") < (b.session_id or "") -- stable order on ties
+end
+
 function M.evaluate()
   local active = activePane()
   local now = os.time()
-  local waiting = {}
+  local waiting, busy = {}, {}
   for _, d in ipairs(readAll()) do
     local fresh = type(d.updated_at) == "number" and (now - d.updated_at) < TTL
     if fresh and d.state == "asking" then
@@ -355,15 +429,12 @@ function M.evaluate()
       else
         table.insert(waiting, d)
       end
+    elseif fresh and d.state == "working" then
+      table.insert(busy, d)
     end
   end
-  table.sort(waiting, function(a, b)
-    local au, bu = a.updated_at or 0, b.updated_at or 0
-    if au ~= bu then
-      return au < bu
-    end
-    return (a.session_id or "") < (b.session_id or "") -- stable order on ties
-  end)
+  table.sort(waiting, byTime)
+  table.sort(busy, byTime)
 
   -- Resolve each waiting session's tmux window name + pane index, and count how
   -- many waiting sessions share a window, so we only disambiguate on collision.
@@ -375,10 +446,14 @@ function M.evaluate()
     winCount[d._wname] = (winCount[d._wname] or 0) + 1
   end
 
-  local f, hiddenY = geom()
+  local f, full = screenGeom()
   if not f then -- no screen right now; try again on the next evaluate
     return
   end
+  local hiddenY = full.y - SIZE - 2
+  local wHiddenX = full.x - WORK_SIZE - 2
+
+  -- Reconcile the waiting bots (orange, top-middle).
   local n = #waiting
   local present, created = {}, false
   for i, d in ipairs(waiting) do
@@ -404,18 +479,42 @@ function M.evaluate()
     p.canvas[3].text = text
     p.canvas[3].textSize = font
   end
-
   for sid, p in pairs(M.pendants) do
     if not present[sid] then
       p.dying = true
     end
   end
 
-  if created then -- a new session => peek immediately
+  -- Reconcile the working bots (grey, left edge, vertical column).
+  local wpresent = {}
+  local wn = #busy
+  for i, d in ipairs(busy) do
+    wpresent[d.session_id] = true
+    local p = M.working[d.session_id]
+    local slotY = workSlotY(f, wn, i - 1)
+    if not p then
+      p = makeWorkingPendant(d, (i - 1) * 0.9, wHiddenX, slotY)
+      M.working[d.session_id] = p
+    end
+    p.session = d
+    p.dying = false
+    p.targetY = slotY
+    if not p.placed then
+      p.curY = p.targetY -- snap vertically on first placement
+      p.placed = true
+    end
+  end
+  for sid, p in pairs(M.working) do
+    if not wpresent[sid] then
+      p.dying = true
+    end
+  end
+
+  if created then -- a new waiting session => peek immediately
     M.phase = "show"
     M.phaseStart = hs.timer.secondsSinceEpoch()
   end
-  if next(M.pendants) ~= nil then
+  if next(M.pendants) ~= nil or next(M.working) ~= nil then
     ensureRender()
   end
 end
