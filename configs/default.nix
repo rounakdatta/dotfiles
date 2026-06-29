@@ -18,5 +18,6 @@
     ./claude-skills
     ./atuin
     ./hammerspoon
+    ./screensaver
   ];
 }
