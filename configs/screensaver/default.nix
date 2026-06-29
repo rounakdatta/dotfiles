@@ -33,11 +33,17 @@ let
 in
 # Darwin-only: a .saver is a macOS bundle. On NixOS this module is a no-op.
 lib.mkIf isDarwin {
-  # Install + sign the saver into ~/Library/Screen Savers on every activation.
-  # We re-copy (not symlink) because the sandboxed legacyScreenSaver host loads
-  # bundles from the user's Library, not /nix/store; chmod +w lets the system
-  # codesign re-sign the store's read-only copy in place (arm64 refuses to load
-  # an unsigned bundle).
+  # Install the saver into ~/Library/Screen Savers, but only when the built
+  # bundle actually changes: the Nix store path is a perfect change token, so a
+  # routine `darwin-rebuild switch` is a true no-op here — no re-copy, no re-sign.
+  #
+  # We copy (not symlink via home.file) and sign in place because the bundle Nix
+  # produces is not a validly signed *bundle*: only the Mach-O is linker-signed,
+  # with no sealed _CodeSignature, so `codesign --verify` on the store path fails
+  # ("code has no resources but signature indicates they must be present"). Full
+  # bundle signing needs the system codesign, which a hermetic Nix build can't
+  # run (and sigtool only signs Mach-O, not bundle resources). arm64 won't load
+  # an unsealed bundle, so we seal it here — which requires a writable copy.
   #
   # NOT automated: selecting it as the *active* screensaver. macOS 26 only
   # registers a freshly-dropped .saver for selection once the Screen Saver
@@ -46,11 +52,16 @@ lib.mkIf isDarwin {
   # persists across reboots and rebuilds (the bundle updates in place).
   home.activation.installClaudePetsScreensaver =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      saver="$HOME/Library/Screen Savers/ClaudePets.saver"
-      $DRY_RUN_CMD mkdir -p "$HOME/Library/Screen Savers"
-      $DRY_RUN_CMD rm -rf "$saver"
-      $DRY_RUN_CMD cp -R ${claudePetsSaver}/ClaudePets.saver "$saver"
-      $DRY_RUN_CMD chmod -R u+w "$saver"
-      $DRY_RUN_CMD /usr/bin/codesign --force --sign - "$saver" 2>/dev/null || true
+      src="${claudePetsSaver}/ClaudePets.saver"
+      dest="$HOME/Library/Screen Savers/ClaudePets.saver"
+      stamp="$HOME/Library/Screen Savers/.ClaudePets.nix-source"
+      if [ ! -e "$dest" ] || [ "$(cat "$stamp" 2>/dev/null)" != "$src" ]; then
+        $DRY_RUN_CMD mkdir -p "$HOME/Library/Screen Savers"
+        $DRY_RUN_CMD rm -rf "$dest"
+        $DRY_RUN_CMD cp -R "$src" "$dest"
+        $DRY_RUN_CMD chmod -R u+w "$dest"
+        $DRY_RUN_CMD /usr/bin/codesign --force --sign - "$dest" 2>/dev/null || true
+        $DRY_RUN_CMD sh -c 'printf "%s" "$1" > "$2"' _ "$src" "$stamp"
+      fi
     '';
 }
