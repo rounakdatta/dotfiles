@@ -121,7 +121,6 @@ in
       "gemini-cli"
       "metalbear-co/mirrord/mirrord"
       "opencode"
-      "cue-lang/tap/cue"
       "gh"
       "yt-dlp"
       "oven-sh/bun/bun"
