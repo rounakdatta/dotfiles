@@ -3,7 +3,7 @@
     enable = true;
     vimAlias = true;
 
-    plugins = with pkgs.vimPlugins; [
+    plugins = [
       {
         plugin = pkgs.vimUtils.buildVimPlugin {
           name = "copilot.lua";

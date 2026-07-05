@@ -1,7 +1,6 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, user, ... }:
 let
   isDarwin = pkgs.stdenv.isDarwin;
-  user = import ../../lib/user.nix;
   # the exported, passphrase-protected secret key lives here on a fresh machine
   gpgKeyImportPath = "${config.home.homeDirectory}/.secrets/private.key";
 in
