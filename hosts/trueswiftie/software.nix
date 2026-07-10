@@ -156,6 +156,7 @@ in
       "spotify"
       "sublime-text"
       "bitwarden"
+      "mullvad-vpn"
       "google-earth-pro"
       "calibre"
       "hiddenbar"
