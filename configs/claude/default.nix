@@ -470,6 +470,23 @@ let
               "mcp"
             ];
           };
+          # Lyric Prototype platform (https://prototype.lyric.tech/mcp): a remote
+          # HTTP MCP server bridged to stdio via mcp-remote (like
+          # android-remote-control above). The scoped bearer key is read from
+          # pass at launch and passed as an Authorization header, so it never
+          # lands in .mcp.json — same approach as the grafana entries. Mint the
+          # key under Prototype > Developer Tools, then create the pass entry:
+          #   pass insert api-keys/lyric-prototype
+          lyric-prototype = {
+            command = "bash";
+            args = [
+              "-c"
+              ''
+                exec npx -y mcp-remote@latest https://prototype.lyric.tech/mcp \
+                  --header "Authorization: Bearer $(pass show api-keys/lyric-prototype)"
+              ''
+            ];
+          };
         };
       }
     ];
