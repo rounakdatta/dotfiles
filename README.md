@@ -10,6 +10,7 @@ Nix is my way of setting up and managing my computers. It's an entirely declarat
 
 - **ninezeroes** — NixOS (x86_64-linux)
 - **trueswiftie** — macOS (aarch64-darwin)
+- **festie** — standalone home-manager (x86_64-linux), for the agentfest container
 
 ## How to navigate
 
@@ -31,6 +32,9 @@ sudo nixos-rebuild switch --flake .#ninezeroes
 
 # macOS
 sudo nix run nix-darwin/nix-darwin-25.11#darwin-rebuild -- switch --flake .
+
+# the festie container (no system to rebuild, just activate the home profile)
+nix run home-manager/master -- switch --flake .#festie
 ```
 
 ## What else

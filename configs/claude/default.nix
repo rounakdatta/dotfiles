@@ -5,10 +5,22 @@
 }:
 let
   homeDir = config.home.homeDirectory;
+
+  # Where the real Claude Code lives, before the wrapper below layers
+  # hierarchical skills on top. On macOS this stays the Homebrew install, which
+  # updates itself out of band on purpose. Linux (ninezeroes, and the festie
+  # container) has no Homebrew, so it gets the Nix-provided build — pinned by
+  # flake.lock, so bumping it is a lockfile bump. CLAUDE_REAL_BINARY still wins
+  # over both.
+  defaultClaudeBinary =
+    if pkgs.stdenv.isDarwin
+    then "/opt/homebrew/bin/claude"
+    else "${pkgs.claude-code}/bin/claude";
+
   claudeWrapperScript = ''
     set -euo pipefail
 
-    REAL_CLAUDE="''${CLAUDE_REAL_BINARY:-/opt/homebrew/bin/claude}"
+    REAL_CLAUDE="''${CLAUDE_REAL_BINARY:-${defaultClaudeBinary}}"
 
     case "''${1:-}" in
       -h | --help | -v | --version | auth | auto-mode | doctor | install | mcp | plugin | plugins | setup-token | update | upgrade)
@@ -493,7 +505,10 @@ let
   };
 in
 {
-  home.packages = lib.optionals pkgs.stdenv.isDarwin [
+  # Only the wrapper goes on PATH as `claude`; the real binary is referenced by
+  # absolute store path from inside it, which keeps it in the closure without
+  # two derivations fighting over bin/claude.
+  home.packages = [
     claudeWrapper
   ];
 
@@ -510,7 +525,7 @@ in
 
   # Install Claude Code plugins declaratively
   home.activation.installClaudePlugins = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    CLAUDE="/opt/homebrew/bin/claude"
+    CLAUDE="${defaultClaudeBinary}"
     if [ -x "$CLAUDE" ]; then
       ${lib.concatMapStringsSep "\n      " (m: ''
         $CLAUDE plugin marketplace add ${m} 2>/dev/null || true
