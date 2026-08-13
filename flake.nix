@@ -81,9 +81,30 @@
         };
       };
 
+      # starting point of a standalone home-manager profile with no system
+      # underneath it — festie is the agentfest container, where the whole
+      # "machine" is one home directory on a persistent volume. Deliberately
+      # not a nixosConfiguration: there is no hardware to describe and no
+      # systemd to run, just the activation package baked into an OCI image.
+      homeConfigurations = {
+        festie = home-manager.lib.homeManagerConfiguration {
+          # claude-code is unfree, and allowUnfree is a nixpkgs *module* option
+          # that the other two hosts set in their configuration.nix. A
+          # standalone home-manager config has no such module, so pkgs has to
+          # be instantiated with it here.
+          pkgs = import nixpkgs {
+            system = "x86_64-linux";
+            config.allowUnfree = true;
+          };
+          extraSpecialArgs = { inherit user inputs self; };
+          modules = [ ./hosts/festie/home.nix ];
+        };
+      };
+
       checks = {
         x86_64-linux = {
           nixos = self.nixosConfigurations.ninezeroes.config.system.build.toplevel;
+          festie = self.homeConfigurations.festie.activationPackage;
         };
         aarch64-darwin = {
           darwin = self.darwinConfigurations.trueswiftie.system;

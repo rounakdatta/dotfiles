@@ -18,3 +18,5 @@ jobs:
       run: nix eval --raw .#nixosConfigurations.ninezeroes.config.system.build.toplevel
     - name: Darwin Configuration Evaluation Check
       run: nix eval --raw .#darwinConfigurations.trueswiftie.system
+    - name: Home Configuration Evaluation Check (festie container)
+      run: nix eval --raw .#homeConfigurations.festie.activationPackage
