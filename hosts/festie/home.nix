@@ -86,6 +86,14 @@
       enable = true;
     };
 
+    # No editor bootstrap on a headless box. Doom's first-run install clones
+    # and byte-compiles well over a hundred packages, and because activation
+    # gates the container's startup, that delay lands squarely between a fresh
+    # volume and a usable terminal. Nothing here is going to open Emacs.
+    doomEmacs = {
+      enable = false;
+    };
+
     htop = {
       enable = true;
       settings.color_scheme = 6;
