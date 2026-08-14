@@ -143,5 +143,14 @@
       enablePrivate = true;
       privateRepo.url = "git@github.com:rounakdatta/agent-smith.git";
     };
+
+    # configs/claude declares the notprod-lyric-deploy MCP server as
+    # `command = "mic"` for ~/work, and that block is not platform-gated — so
+    # it lands here too. Without this the server is declared and dead, which is
+    # exactly what was happening. The laptop gets mic from the lyric-tech/mic
+    # Homebrew tap instead; see configs/mic for why this host can't.
+    lyric-mic = {
+      enable = true;
+    };
   };
 }

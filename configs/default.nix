@@ -15,6 +15,7 @@
     ./claude
     ./go
     ./cargo
+    ./mic
     ./claude-skills
     ./atuin
     ./hammerspoon
