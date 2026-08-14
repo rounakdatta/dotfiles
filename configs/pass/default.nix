@@ -33,7 +33,16 @@ in
         # BatchMode/accept-new so activation can't stall on an SSH host-key or
         # passphrase prompt; point at the manual command rather than guessing why
         export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
-        if ! { git fetch origin && git pull origin master; } >/dev/null 2>&1; then
+        # Follow whatever the remote calls its default branch instead of
+        # assuming master. The store moved to main long ago, and a hardcoded
+        # master silently bootstraps a fresh machine from a branch that is
+        # hundreds of commits stale — which looks like "pass works" right up
+        # until a credential turns out to be the old one.
+        DEFAULT_BRANCH="$(git ls-remote --symref origin HEAD 2>/dev/null \
+          | awk '/^ref:/ { sub("refs/heads/", "", $2); print $2; exit }')"
+        [ -n "$DEFAULT_BRANCH" ] || DEFAULT_BRANCH=main
+
+        if ! { git fetch origin && git pull origin "$DEFAULT_BRANCH"; } >/dev/null 2>&1; then
             echo "note: password-store not synced; run 'git -C $PW_DIR pull' once gitlab access is set up"
         fi
 
