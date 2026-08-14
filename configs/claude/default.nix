@@ -510,7 +510,22 @@ in
   # two derivations fighting over bin/claude.
   home.packages = [
     claudeWrapper
-  ];
+  ]
+  # bun, for the two things above that shell out to `bunx`: the PostToolUse
+  # Bash hook and the bash-history MCP server. trueswiftie gets bun from
+  # Homebrew ("oven-sh/bun/bun" in hosts/trueswiftie/software.nix), so it must
+  # not also get a Nix copy fighting for bin/bun — same darwin/Linux split as
+  # defaultClaudeBinary above, for the same reason.
+  #
+  # Without this on a Linux host, EVERY Bash tool call ends in
+  #
+  #   PostToolUse:Bash hook error
+  #   Failed with non-blocking status code: /bin/sh: line 1:
+  #   bunx: command not found
+  #
+  # and the bash-history server never starts at all. Non-blocking, so it only
+  # ever looked like noise — but it fired on every single command.
+  ++ lib.optional (!pkgs.stdenv.isDarwin) pkgs.bun;
 
   # Create ~/.claude directory and settings.json
   home.file.".claude/settings.json" = {
