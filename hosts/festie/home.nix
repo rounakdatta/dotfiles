@@ -81,6 +81,30 @@
     ];
   };
 
+  # The GPG key is passphrase-protected, and on a headless box that is the
+  # difference between pass/gopass working and silently failing — including the
+  # MCP servers that shell out to `pass show`.
+  services.gpg-agent = {
+    # pinentry-gnome3 has no display to draw on here, so the first decryption
+    # would fail with no way to prompt. curses draws inside whatever tty is
+    # asking, which is the tmux pane Codeman hands you.
+    pinentry.package = pkgs.pinentry-curses;
+
+    # Unlock once per container, not once every ten minutes. This machine is
+    # meant to keep working while nobody is watching it, and a cache that
+    # expires mid-run turns into an agent stuck on an invisible prompt.
+    # 400 days; the practical lifetime is the pod's, since ~/.gnupg's agent
+    # dies with it.
+    defaultCacheTtl = 34560000;
+    maxCacheTtl = 34560000;
+
+    # No systemd user session in a container, so the agent's ssh socket never
+    # comes up. ssh uses the explicit IdentityFile from configs/ssh instead,
+    # and pointing SSH_AUTH_SOCK at a socket that will never exist only
+    # produces confusing failures.
+    enableSshSupport = false;
+  };
+
   programs = {
     home-manager = {
       enable = true;
