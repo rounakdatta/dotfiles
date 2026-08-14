@@ -12,8 +12,11 @@ in
 
   services.gpg-agent = {
     enable = true;
-    pinentry.package = if isDarwin then pkgs.pinentry_mac else pkgs.pinentry-gnome3;
-    enableSshSupport = !isDarwin;
+    # mkDefault so a headless host can swap these out. Both defaults assume a
+    # graphical session with a systemd user bus behind it, which is exactly
+    # what a container does not have.
+    pinentry.package = lib.mkDefault (if isDarwin then pkgs.pinentry_mac else pkgs.pinentry-gnome3);
+    enableSshSupport = lib.mkDefault (!isDarwin);
   };
 
   # GPG Suite (brew) ships gpg-agent 2.2.41 and auto-starts it, while nix's gpg
