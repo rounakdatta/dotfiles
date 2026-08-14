@@ -44,6 +44,12 @@
       fzf
       tree
 
+      # configs/fish runs `atuin init fish` at startup and configs/atuin
+      # restores its sync key, but neither installs the binary — ninezeroes
+      # happens to carry it in its own host list, so the dependency is easy to
+      # miss until every shell opens with "Unknown command: atuin".
+      atuin
+
       # data wrangling
       jq
       yq
