@@ -62,10 +62,32 @@
       inetutils # telnet, ping, ...
       bind # dig, ...
 
-      # cloud & kubernetes. Only AWS for now — gcloud and azure-cli are each
-      # roughly a gigabyte, so they get added the day something actually needs
-      # them rather than on the off chance.
+      # cloud & kubernetes. All three providers, deliberately — this used to be
+      # AWS-only, on the reasoning that gcloud and azure-cli are ~1GB each and
+      # should wait for something to actually need them. mic is that something:
+      # festie is where it gets used most, and half of it is unusable without
+      # these.
+      #
+      # Concretely, `mic switch <cluster>` shells out to the provider CLI to
+      # fetch credentials — `gcloud container clusters get-credentials` for GKE,
+      # `az aks get-credentials` for AKS — so without them every GCP and Azure
+      # cluster in `mic check` can only ever show ✗, and the clusters
+      # themselves are unreachable. Roughly half of Lyric's fleet is on those
+      # two providers.
       awscli2
+      # Nix rather than the CLI's own installer: it bundles its own Python, and
+      # withExtraComponents lets the GKE auth plugin be declared instead of
+      # `gcloud components install` at activation. kubectl cannot talk to a GKE
+      # cluster without that plugin, so gcloud alone would get us a kubeconfig
+      # we couldn't use. Same form hosts/trueswiftie already uses.
+      (google-cloud-sdk.withExtraComponents [ google-cloud-sdk.components.gke-gcloud-auth-plugin ])
+      azure-cli
+      # AWS SSM, for reaching BYOC lyriclets. mic's kubeconfig fetch itself only
+      # needs the plain SSM API (send-command / get-command-invocation, no
+      # plugin), but `mic doctor` checks for this binary and an interactive
+      # `aws ssm start-session` genuinely requires it — so having it here is the
+      # difference between doctor reporting a clean bill and a permanent ○.
+      ssm-session-manager-plugin
       kubectl
       kubernetes-helm
       kustomize
