@@ -187,6 +187,14 @@
       };
     };
 
+    # `festie-doctor` — one command that says whether this container actually
+    # converged. Worth shipping rather than remembering: the failure it detects
+    # is silent by construction, and the entrypoint deliberately continues past
+    # a broken activation so a healthy-looking pod proves nothing.
+    festie-doctor = {
+      enable = true;
+    };
+
     # The PAT-over-HTTPS path is not deterministic on a container that boots
     # with a locked GPG key — see the option's description in configs/git. The
     # mounted SSH key needs no passphrase, so git uses that instead.
