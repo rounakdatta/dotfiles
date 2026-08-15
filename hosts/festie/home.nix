@@ -187,6 +187,13 @@
       };
     };
 
+    # The PAT-over-HTTPS path is not deterministic on a container that boots
+    # with a locked GPG key — see the option's description in configs/git. The
+    # mounted SSH key needs no passphrase, so git uses that instead.
+    githubOverSsh = {
+      enable = true;
+    };
+
     # configs/claude declares the notprod-lyric-deploy MCP server as
     # `command = "mic"` for ~/work, and that block is not platform-gated — so
     # it lands here too. Without this the server is declared and dead, which is
