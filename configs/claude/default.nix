@@ -485,61 +485,78 @@ let
       }
       {
         path = "${homeDir}/work";
-        mcpServers = {
-          notprod-grafana-lyric = {
-            command = "bash";
-            args = [
-              "-c"
-              ''
-                GRAFANA_URL="https://notprod-grafana.lyric.tech"
-                GRAFANA_SERVICE_ACCOUNT_TOKEN="$(pass show api-keys/notprod-grafana-lyric)"
-
-                exec uvx mcp-grafana \
-                  -t stdio \
-                  -debug
-              ''
-            ];
-          };
-          prod-grafana-lyric = {
-            command = "bash";
-            args = [
-              "-c"
-              ''
-                GRAFANA_URL="https://prod-grafana.lyric.tech/"
-                GRAFANA_SERVICE_ACCOUNT_TOKEN="$(pass show api-keys/prod-grafana-lyric)"
-
-                exec uvx mcp-grafana \
-                  -t stdio \
-                  -debug
-              ''
-            ];
-          };
-          notprod-lyric-deploy = {
-            command = "mic";
-            args = [
-              "mcp"
-            ];
-          };
-          # Lyric Prototype platform (https://prototype.lyric.tech/mcp): a remote
-          # HTTP MCP server bridged to stdio via mcp-remote (like
-          # android-remote-control above). The scoped bearer key is read from
-          # pass at launch and passed as an Authorization header, so it never
-          # lands in .mcp.json — same approach as the grafana entries. Mint the
-          # key under Prototype > Developer Tools, then create the pass entry:
-          #   pass insert api-keys/lyric-prototype
-          lyric-prototype = {
-            command = "bash";
-            args = [
-              "-c"
-              ''
-                exec npx -y mcp-remote@latest https://prototype.lyric.tech/mcp \
-                  --header "Authorization: Bearer $(pass show api-keys/lyric-prototype)"
-              ''
-            ];
-          };
-        };
+        mcpServers = lyricWorkMcpServers;
+      }
+      {
+        # byoc is a Codeman case in its own right, so sessions start with it as
+        # the working directory — and project MCP resolves from <cwd>/.mcp.json
+        # with no walk upwards. Skills do climb (Claude Code reads each ancestor
+        # that has a CLAUDE.md, and both levels here do), which makes the
+        # asymmetry easy to miss: a session started in byoc would see all of its
+        # skills and none of Lyric's servers, `notprod-lyric-deploy` — the one
+        # those skills lean on — included.
+        #
+        # Same servers as the parent rather than a subset: byoc work is Lyric
+        # work, and a second list would drift the moment either is edited.
+        path = "${homeDir}/work/byoc";
+        mcpServers = lyricWorkMcpServers;
       }
     ];
+  };
+
+  # Shared by ~/work and ~/work/byoc, see the note above.
+  lyricWorkMcpServers = {
+    notprod-grafana-lyric = {
+      command = "bash";
+      args = [
+        "-c"
+        ''
+          GRAFANA_URL="https://notprod-grafana.lyric.tech"
+          GRAFANA_SERVICE_ACCOUNT_TOKEN="$(pass show api-keys/notprod-grafana-lyric)"
+
+          exec uvx mcp-grafana \
+            -t stdio \
+            -debug
+        ''
+      ];
+    };
+    prod-grafana-lyric = {
+      command = "bash";
+      args = [
+        "-c"
+        ''
+          GRAFANA_URL="https://prod-grafana.lyric.tech/"
+          GRAFANA_SERVICE_ACCOUNT_TOKEN="$(pass show api-keys/prod-grafana-lyric)"
+
+          exec uvx mcp-grafana \
+            -t stdio \
+            -debug
+        ''
+      ];
+    };
+    notprod-lyric-deploy = {
+      command = "mic";
+      args = [
+        "mcp"
+      ];
+    };
+    # Lyric Prototype platform (https://prototype.lyric.tech/mcp): a remote
+    # HTTP MCP server bridged to stdio via mcp-remote (like
+    # android-remote-control above). The scoped bearer key is read from
+    # pass at launch and passed as an Authorization header, so it never
+    # lands in .mcp.json — same approach as the grafana entries. Mint the
+    # key under Prototype > Developer Tools, then create the pass entry:
+    #   pass insert api-keys/lyric-prototype
+    lyric-prototype = {
+      command = "bash";
+      args = [
+        "-c"
+        ''
+          exec npx -y mcp-remote@latest https://prototype.lyric.tech/mcp \
+            --header "Authorization: Bearer $(pass show api-keys/lyric-prototype)"
+        ''
+      ];
+    };
   };
 in
 {

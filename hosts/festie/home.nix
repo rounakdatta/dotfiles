@@ -184,6 +184,12 @@
       linkedCases = {
         personal = "${config.home.homeDirectory}/personal";
         work = "${config.home.homeDirectory}/work";
+        # A case of its own rather than a directory to cd into after launching:
+        # Codeman starts a session in the case directory, and both the skill set
+        # and the MCP servers are resolved once at startup, so changing
+        # directory afterwards picks up neither. configs/claude gives this path
+        # its own .mcp.json for the same reason.
+        byoc = "${config.home.homeDirectory}/work/byoc";
       };
     };
 
