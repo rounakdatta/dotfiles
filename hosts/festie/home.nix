@@ -28,6 +28,14 @@
       which
       less
       procps
+      # `clear`, `tput`, `reset`, `infocmp` — and, just as importantly, the
+      # terminfo database none of them work without. ninezeroes and trueswiftie
+      # both get this from the system underneath them; a standalone home-manager
+      # profile has no system, so festie had neither the binaries nor a terminfo
+      # entry for the TERM tmux hands its panes. `clear` was simply not on PATH,
+      # and anything else that queries terminfo (less, fzf, vim redraw) was
+      # working off defaults rather than the real terminal description.
+      ncurses
       zip
       unzip
       # TLS trust store; the image entrypoint points SSL_CERT_FILE at this
