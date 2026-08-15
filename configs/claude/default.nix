@@ -572,16 +572,22 @@ in
       PROJECT_DIR="${profile.path}"
       PROJECT_MCP_JSON="$PROJECT_DIR/.mcp.json"
 
-      if [ ! -d "$PROJECT_DIR" ]; then
-        echo "Skipping local MCP sync for missing directory: $PROJECT_DIR"
+      # Create the directory rather than skipping it. These paths are not
+      # incidental — they are where this module declares the profiles to live,
+      # so "missing" means the profile is dead, not that the host opted out. A
+      # fresh festie volume has neither ~/personal nor ~/work, and the old
+      # branch no-opped with a single line that read like a deliberate choice
+      # while every server in the profile silently never loaded.
+      #
+      # Idempotent, and a no-op on a host where the path is already a checkout.
+      mkdir -p "$PROJECT_DIR"
+
+      if [ -f "$PROJECT_MCP_JSON" ]; then
+        "$JQ_BIN" --argjson newServers '${builtins.toJSON profile.mcpServers}' \
+          '.mcpServers = $newServers' \
+          "$PROJECT_MCP_JSON" > "$PROJECT_MCP_JSON.tmp" && mv "$PROJECT_MCP_JSON.tmp" "$PROJECT_MCP_JSON"
       else
-        if [ -f "$PROJECT_MCP_JSON" ]; then
-          "$JQ_BIN" --argjson newServers '${builtins.toJSON profile.mcpServers}' \
-            '.mcpServers = $newServers' \
-            "$PROJECT_MCP_JSON" > "$PROJECT_MCP_JSON.tmp" && mv "$PROJECT_MCP_JSON.tmp" "$PROJECT_MCP_JSON"
-        else
-          echo '{"mcpServers":${builtins.toJSON profile.mcpServers}}' | "$JQ_BIN" '.' > "$PROJECT_MCP_JSON"
-        fi
+        echo '{"mcpServers":${builtins.toJSON profile.mcpServers}}' | "$JQ_BIN" '.' > "$PROJECT_MCP_JSON"
       fi
     '') mcpInventory.projectLocal}
   '';
