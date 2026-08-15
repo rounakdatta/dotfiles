@@ -27,15 +27,21 @@ in
       # to link binaries; the activation PATH doesn't include it by default.
       export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:/opt/homebrew/bin:$HOME/.cargo/bin:/usr/bin:$PATH"
 
+      # if/else rather than an early `exit`: home-manager concatenates every
+      # home.activation block into ONE bash script, so `exit` here would end the
+      # whole activation run — every step ordered after this one silently never
+      # runs. See configs/mic for the outage this actually caused.
       if ! command -v cargo >/dev/null 2>&1; then
         echo "Skipping cargo package install because cargo is unavailable"
-        exit 0
+      else
+        # Keeps the branch non-empty if this module is ever enabled with an
+        # empty package list; bash rejects an `else` with nothing in it.
+        :
+        ${lib.concatMapStringsSep "\n" (pkg: ''
+          echo "Installing ${pkg}..."
+          cargo install ${pkg} || true
+        '') cfg.packages}
       fi
-
-      ${lib.concatMapStringsSep "\n" (pkg: ''
-        echo "Installing ${pkg}..."
-        cargo install ${pkg} || true
-      '') cfg.packages}
     '';
   };
 }

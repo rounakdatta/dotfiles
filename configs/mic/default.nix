@@ -54,63 +54,84 @@ in
     # entryAfter writeBoundary is the same slot the go/cargo/npm package
     # modules use — after home-manager has finished linking the generation, so
     # gh and its config are in place.
+    # The whole body runs in a SUBSHELL, and that is load-bearing rather than
+    # stylistic. home-manager concatenates every home.activation block into one
+    # bash script, so a bare `exit 0` here does not "skip this module" — it ends
+    # the entire activation run, silently and with status 0. Every step ordered
+    # after this one is simply never reached: installPackages, linkGeneration,
+    # mergeGlobalMcpServers, npmPackages, restoreAtuin, syncPrivateSkills,
+    # syncClaudeDocs, writeProjectLocalMcpServers.
+    #
+    # That failure is worse than it sounds, because the early exit people
+    # actually hit is the *success* path: `mic already installed`. A fresh
+    # volume activates cleanly (mic gets downloaded, control falls through the
+    # bottom of the block), and every activation after that truncates. The
+    # machine converges exactly once and then stops, keeping ~/.claude,
+    # ~/.config/fish and ~/.config/tmux pinned to the generation that first
+    # installed mic — which on festie means dangling symlinks into a store path
+    # the next image no longer carries. Nothing logs a warning, because exiting
+    # 0 is indistinguishable from finishing.
+    #
+    # Same pattern as configs/pass, for the same reason.
     home.activation.installLyricMic = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
+      (
+        export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH"
 
-      # Every failure below is soft. This runs during container startup on
-      # festie, and activation gates whether the machine becomes usable at
-      # all — refusing to boot because GitHub was briefly unreachable would be
-      # a far worse outcome than running yesterday's mic.
-      if ! command -v gh >/dev/null 2>&1; then
-        echo "mic: gh unavailable, skipping install"
-        exit 0
-      fi
-      if ! gh auth status >/dev/null 2>&1; then
-        echo "mic: gh not authenticated (run 'gh auth login'), skipping install"
-        exit 0
-      fi
-
-      case "$(uname -s)" in
-        Linux) micOS=linux ;;
-        Darwin) micOS=darwin ;;
-        *) echo "mic: unsupported OS $(uname -s), skipping"; exit 0 ;;
-      esac
-      case "$(uname -m)" in
-        x86_64 | amd64) micArch=amd64 ;;
-        aarch64 | arm64) micArch=arm64 ;;
-        *) echo "mic: unsupported architecture $(uname -m), skipping"; exit 0 ;;
-      esac
-
-      micTarget="${cfg.version}"
-      if [ "$micTarget" = "latest" ]; then
-        micTarget="$(gh release view --repo lyric-tech/mic --json tagName -q .tagName 2>/dev/null || true)"
-        if [ -z "$micTarget" ]; then
-          echo "mic: could not resolve the latest release; keeping the current install"
+        # Every failure below is soft. This runs during container startup on
+        # festie, and activation gates whether the machine becomes usable at
+        # all — refusing to boot because GitHub was briefly unreachable would be
+        # a far worse outcome than running yesterday's mic.
+        if ! command -v gh >/dev/null 2>&1; then
+          echo "mic: gh unavailable, skipping install"
           exit 0
         fi
-      fi
+        if ! gh auth status >/dev/null 2>&1; then
+          echo "mic: gh not authenticated (run 'gh auth login'), skipping install"
+          exit 0
+        fi
 
-      micMarker="${binDir}/.mic-version"
-      if [ "$(cat "$micMarker" 2>/dev/null || true)" = "$micTarget" ] && [ -x "${binDir}/mic" ]; then
-        echo "mic $micTarget already installed"
-        exit 0
-      fi
+        case "$(uname -s)" in
+          Linux) micOS=linux ;;
+          Darwin) micOS=darwin ;;
+          *) echo "mic: unsupported OS $(uname -s), skipping"; exit 0 ;;
+        esac
+        case "$(uname -m)" in
+          x86_64 | amd64) micArch=amd64 ;;
+          aarch64 | arm64) micArch=arm64 ;;
+          *) echo "mic: unsupported architecture $(uname -m), skipping"; exit 0 ;;
+        esac
 
-      mkdir -p "${binDir}"
-      micTmp="$(mktemp -d)"
-      # Streamed straight out of gh into tar: the asset lives on a private
-      # repo, so a plain curl would 404 without a token. gh already holds one.
-      if gh release download "$micTarget" \
-           --repo lyric-tech/mic \
-           --pattern "mic_''${micOS}_''${micArch}.tar.gz" \
-           --output - 2>/dev/null | tar xz -C "$micTmp" mic; then
-        install -m 0755 "$micTmp/mic" "${binDir}/mic"
-        printf '%s\n' "$micTarget" > "$micMarker"
-        echo "mic: installed $micTarget"
-      else
-        echo "mic: download of $micTarget failed; leaving the existing install in place"
-      fi
-      rm -rf "$micTmp"
+        micTarget="${cfg.version}"
+        if [ "$micTarget" = "latest" ]; then
+          micTarget="$(gh release view --repo lyric-tech/mic --json tagName -q .tagName 2>/dev/null || true)"
+          if [ -z "$micTarget" ]; then
+            echo "mic: could not resolve the latest release; keeping the current install"
+            exit 0
+          fi
+        fi
+
+        micMarker="${binDir}/.mic-version"
+        if [ "$(cat "$micMarker" 2>/dev/null || true)" = "$micTarget" ] && [ -x "${binDir}/mic" ]; then
+          echo "mic $micTarget already installed"
+          exit 0
+        fi
+
+        mkdir -p "${binDir}"
+        micTmp="$(mktemp -d)"
+        # Streamed straight out of gh into tar: the asset lives on a private
+        # repo, so a plain curl would 404 without a token. gh already holds one.
+        if gh release download "$micTarget" \
+             --repo lyric-tech/mic \
+             --pattern "mic_''${micOS}_''${micArch}.tar.gz" \
+             --output - 2>/dev/null | tar xz -C "$micTmp" mic; then
+          install -m 0755 "$micTmp/mic" "${binDir}/mic"
+          printf '%s\n' "$micTarget" > "$micMarker"
+          echo "mic: installed $micTarget"
+        else
+          echo "mic: download of $micTarget failed; leaving the existing install in place"
+        fi
+        rm -rf "$micTmp"
+      ) || true
     '';
   };
 }

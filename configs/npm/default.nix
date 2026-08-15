@@ -33,15 +33,21 @@ in
 
       mkdir -p "$NPM_CONFIG_PREFIX"
 
+      # if/else rather than an early `exit`: home-manager concatenates every
+      # home.activation block into ONE bash script, so `exit` here would end the
+      # whole activation run — every step ordered after this one silently never
+      # runs. See configs/mic for the outage this actually caused.
       if ! command -v npm >/dev/null 2>&1; then
         echo "Skipping npm package install because npm is unavailable"
-        exit 0
+      else
+        # Keeps the branch non-empty when no packages are configured: `packages`
+        # defaults to [ ], and bash rejects an `else` with nothing in it.
+        :
+        ${lib.concatMapStringsSep "\n" (pkg: ''
+          echo "Installing npm package ${pkg}..."
+          npm install --global --location=global ${pkg}
+        '') cfg.packages}
       fi
-
-      ${lib.concatMapStringsSep "\n" (pkg: ''
-        echo "Installing npm package ${pkg}..."
-        npm install --global --location=global ${pkg}
-      '') cfg.packages}
     '';
   };
 }
