@@ -13,6 +13,7 @@
     ./nextcloud
     ./emacs
     ./claude
+    ./codeman
     ./go
     ./cargo
     ./mic

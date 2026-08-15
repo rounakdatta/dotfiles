@@ -174,6 +174,26 @@
       privateRepo.url = "git@github.com:rounakdatta/agent-smith.git";
     };
 
+    # Codeman is this machine's UI, and the cases it offers are the working
+    # directories you actually land in. Declared here so a rebuilt festie comes
+    # up pointing at ~/personal and ~/work rather than only at
+    # ~/codeman-cases/<name> — the registry behind this is runtime state on the
+    # PVC, so a link made by hand does not survive being deployed elsewhere.
+    codeman = {
+      enable = true;
+      linkedCases = {
+        personal = "${config.home.homeDirectory}/personal";
+        work = "${config.home.homeDirectory}/work";
+      };
+    };
+
+    # The PAT-over-HTTPS path is not deterministic on a container that boots
+    # with a locked GPG key — see the option's description in configs/git. The
+    # mounted SSH key needs no passphrase, so git uses that instead.
+    githubOverSsh = {
+      enable = true;
+    };
+
     # configs/claude declares the notprod-lyric-deploy MCP server as
     # `command = "mic"` for ~/work, and that block is not platform-gated — so
     # it lands here too. Without this the server is declared and dead, which is
