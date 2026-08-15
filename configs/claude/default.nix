@@ -300,17 +300,55 @@ let
     # is named "grafana" anymore — they're notprod/prod-grafana-lyric now).
     enableAllProjectMcpServers = true;
 
-    # Run in bypass-permissions mode: execute tool calls without per-action
-    # prompts. The rm -rf / and rm -rf ~ circuit breaker and any explicit
-    # `ask` rules still prompt. (Managed/enterprise settings can disable this
-    # org-wide; web sessions ignore it and fall back to a prompting mode.)
-    permissions.defaultMode = "bypassPermissions";
+    # Auto mode: act without per-action prompts, but run each action past a
+    # classifier informed by the autoMode block below. Strictly more careful
+    # than the bypassPermissions this replaced — bypass runs everything
+    # silently, auto still refuses the things hard_deny names — and it is what
+    # the machine was being nudged towards on every new session anyway.
+    #
+    # Declared here rather than left to `/auto-mode-setup` because that wizard
+    # saves its result into ~/.claude/settings.json, and on festie that path is
+    # a read-only symlink into the Nix store. The scan ran, drafted a proposal,
+    # failed to write, and re-offered itself on the next session — every deploy,
+    # forever. Configuration that a tool cannot persist has to come from here.
+    permissions.defaultMode = "auto";
 
     # Suppress the one-time "bypass permissions mode, do you accept?" startup
     # warning. NOTE: not in the documented settings.json reference, so it may
     # be a no-op on current Claude Code (the documented equivalent is the
     # --dangerously-skip-permissions CLI flag). Kept to mirror upstream intent.
     skipDangerousModePermissionPrompt = true;
+
+    # Only `environment` is set. allow / soft_deny / hard_deny fall back to the
+    # shipped defaults per-key (17 / 66 / 1 rules — see `claude auto-mode
+    # defaults`), and those are a better-maintained baseline than anything
+    # hand-written here. This section is the half the wizard personalises: it is
+    # spliced into the classifier prompt, so every entry should be a checkable
+    # fact rather than an aspiration. Same `**Key**: value` shape as the
+    # defaults, and it replaces the whole default list rather than merging, so
+    # slots that are genuinely unset still have to say so.
+    autoMode.environment = [
+      "**Organization**: Lyric (lyric.tech) for work; personal projects otherwise"
+      "**Primary use of Claude Code**: software development, plus operating a single-node k3s homelab"
+      "**Cloud provider(s)**: AWS, GCP and Azure — all three CLIs are installed, and `mic switch` shells out to them for cluster credentials"
+      "**Repository visibility**: rounakdatta/dotfiles, rounakdatta/agentfest and rounakdatta/homelab.setup are public; rounakdatta/agent-smith and lyric-tech/* are private"
+      "**Internal sharing / snippet hosting**: snibox on the homelab — treat public paste/gist services as outside the trust boundary"
+      "**Org-specific CLIs**: `mic` (lyric-tech/mic), for Lyric cluster access and deploys"
+      "**Secrets management**: pass/gopass backed by a GPG key for local secrets; Bitwarden as the source of truth for cluster Secrets, synced by ansible"
+      "**CI/CD deploy targets**: GitHub Actions, which joins the tailnet and reaches the k3s cluster over Tailscale SSH"
+      "**Network posture**: administration is tailnet-only, but the Traefik ingress on taptappers.club is reachable from the public internet"
+      "**Protected deployment namespaces / environments**: apps, databases, velero, tinyauth and kube-system on the k3s cluster"
+      "**Data retention / declassification**: None configured"
+      "**Trusted repo**: The git repository the agent started in (its working directory) and its configured remote(s)"
+      "**Source control**: github.com/rounakdatta/*, github.com/lyric-tech/*, and gitlab.com/rounakdatta/pass"
+      "**Trusted internal domains**: *.taptappers.club and *.lyric.tech"
+      "**Trusted cloud buckets**: the Cloudflare R2 bucket holding Velero backups"
+      "**Key internal services**: notprod-grafana.lyric.tech, prod-grafana.lyric.tech, prototype.lyric.tech, and the homelab services on *.taptappers.club"
+      "**Internal package registry**: ghcr.io/rounakdatta (container images and Helm charts)"
+      "**Sensitive data locations & audiences**: ~/.password-store, ~/.ssh, ~/.gnupg, ~/.secrets, ~/.gitconfig.https and /run/secrets/agentfest — plus any file or store holding personal data, confidential business data, credentials, or regulated data"
+      "**Sensitive remote targets**: any namespace, host or container whose name carries `prod` or `production` as a whole word or name segment"
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment"
+    ];
 
     statusLine = {
       type = "command";
