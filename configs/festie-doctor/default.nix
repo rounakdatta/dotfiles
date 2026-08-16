@@ -34,6 +34,10 @@
 let
   cfg = config.programs.festie-doctor;
 
+  # Read straight off the codeman module so the two can never disagree about
+  # which cases exist.
+  cases = config.programs.codeman.linkedCases;
+
   # The load-bearing files, each with the capability it gates. Kept explicit
   # rather than derived from config.home.file: that would also enumerate the
   # whole skills tree, and the point here is a short, readable verdict on the
@@ -143,6 +147,29 @@ let
         fi
       }
 
+      # Derived from programs.codeman.linkedCases rather than listed here, so a
+      # case added there is checked here automatically. The previous version
+      # hardcoded personal and work, and byoc landed without the doctor
+      # noticing - a coverage gap that is invisible precisely because the tool
+      # still reports all-clear.
+      #
+      # All three assertions matter for a case to be usable: the directory has
+      # to exist, Codeman has to know the name, and .mcp.json has to be there -
+      # project MCP resolves from the case directory and does not walk up, so a
+      # case without one silently starts with no servers.
+      check_case() {
+        local name="$1" path="$2"
+        if [ ! -d "$path" ]; then
+          fail "case $name: $path does not exist"
+        elif ! grep -q "\"$name\"" "$HOME/.codeman/linked-cases.json" 2>/dev/null; then
+          fail "case $name is not registered in linked-cases.json"
+        elif [ ! -f "$path/.mcp.json" ]; then
+          fail "case $name has no .mcp.json; it would start with no MCP servers"
+        else
+          pass "case $name -> $path"
+        fi
+      }
+
       printf '\n=== activation ===\n'
       if [ -z "$current" ]; then
         fail "no active home-manager generation; activation has never run here"
@@ -166,10 +193,17 @@ let
       fi
 
       printf '\n=== capabilities ===\n'
-      if grep -q '"defaultMode":"bypassPermissions"' "$HOME/.claude/settings.json" 2>/dev/null; then
-        pass "claude runs in bypassPermissions"
+      # Report the mode; do not assert a particular one. The first version of
+      # this check grepped for the literal string "bypassPermissions", so the
+      # day that setting legitimately changed to "auto" the doctor reported a
+      # broken machine - on a machine that was fine. A checker that pins a value
+      # it does not own becomes a liar at the first intentional change, and the
+      # symlink section above already proves this file is the nix-managed one.
+      mode="$(sed -n 's/.*"defaultMode":"\([a-zA-Z]*\)".*/\1/p' "$HOME/.claude/settings.json" 2>/dev/null | head -1)"
+      if [ -n "$mode" ]; then
+        pass "claude permission mode: $mode"
       else
-        fail "claude settings.json is missing or not the nix-managed one"
+        fail "claude settings.json has no permissions.defaultMode - missing, or not the nix-managed one"
       fi
       if grep -q "pinentry" "$HOME/.gnupg/gpg-agent.conf" 2>/dev/null; then
         pass "gpg-agent has a pinentry-program"
@@ -182,20 +216,8 @@ let
         fail "clear or terminfo missing for TERM=''${TERM:-unset}"
       fi
 
-      printf '\n=== project roots ===\n'
-      for d in personal work; do
-        if [ -f "$HOME/$d/.mcp.json" ]; then
-          pass "$HOME/$d/.mcp.json"
-        else
-          fail "$HOME/$d/.mcp.json missing; that profile's MCP servers are declared and dead"
-        fi
-      done
-      if grep -q '"personal"' "$HOME/.codeman/linked-cases.json" 2>/dev/null \
-        && grep -q '"work"' "$HOME/.codeman/linked-cases.json" 2>/dev/null; then
-        pass "codeman cases personal and work linked"
-      else
-        fail "linked-cases.json missing personal and/or work"
-      fi
+      printf '\n=== cases ===\n'
+      ${lib.concatStringsSep "\n      " (lib.mapAttrsToList (name: path: ''check_case "${name}" "${path}"'') cases)}
 
       # Loud on purpose. The passphrase cache lives in gpg-agent's memory, so it
       # dies with the pod - every deploy locks the machine again. Left silent,
