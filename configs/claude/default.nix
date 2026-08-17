@@ -289,6 +289,39 @@ let
   # Every lifecycle event runs the same tracker command.
   trackerHook = [{ type = "command"; command = sessionTrackerCmd; }];
 
+  # --- Permission mode: one decision, two vocabularies ---
+  # Claude runs two ways on festie, and each reads a DIFFERENT file under a
+  # DIFFERENT key name for the same concept:
+  #
+  #   bare `claude` (Tailscale SSH, cron)  ~/.claude/settings.json   permissions.defaultMode
+  #   every Codeman session (the web UI)   ~/.codeman/settings.json  claudeMode
+  #
+  # Codeman turns its key into an explicit CLI flag at spawn, and a command-line
+  # argument outranks a user settings file — so for anything launched from the web
+  # UI, which on festie is everything, Codeman's key WINS and the key below is
+  # dead weight. Setting only one of them is precisely how this drifted: #92 moved
+  # this file to "auto" for good reasons, Codeman's own dropdown was later set to
+  # "auto" by hand, and nothing in any repo recorded either half of that.
+  #
+  # So it is derived, not restated. configs/codeman owns the decision (it is that
+  # tool's config, in that tool's vocabulary); this table only translates the
+  # spelling. Hosts without Codeman — trueswiftie, ninezeroes — are NOT disposable
+  # containers and keep the classifier-guarded mode regardless.
+  codemanToClaudeMode = {
+    "dangerously-skip-permissions" = "bypassPermissions";
+    "auto" = "auto";
+    # Codeman passes no flag for either of these, so Claude Code falls through to
+    # this file; "default" (Manual) is the honest equivalent. allowedTools adds an
+    # --allowedTools list on top, which has no defaultMode spelling at all.
+    "normal" = "default";
+    "allowedTools" = "default";
+  };
+  codemanPermissionMode = config.programs.codeman.claudePermissionMode;
+  permissionDefaultMode =
+    if config.programs.codeman.enable && codemanPermissionMode != null
+    then codemanToClaudeMode.${codemanPermissionMode}
+    else "auto";
+
   # Claude Code settings as a Nix attrset for better maintainability
   claudeSettings = {
     autoUpdaterStatus = "disabled";
@@ -300,25 +333,32 @@ let
     # is named "grafana" anymore — they're notprod/prod-grafana-lyric now).
     enableAllProjectMcpServers = true;
 
-    # Auto mode: act without per-action prompts, but run each action past a
-    # classifier informed by the autoMode block below. Strictly more careful
-    # than the bypassPermissions this replaced — bypass runs everything
-    # silently, auto still refuses the things hard_deny names — and it is what
-    # the machine was being nudged towards on every new session anyway.
+    # Derived from configs/codeman — see the table above for why this is not a
+    # literal, and why it governs only a BARE `claude` (Tailscale SSH, cron, a
+    # shell in the pod) rather than the sessions you actually work in.
     #
-    # Declared here rather than left to `/auto-mode-setup` because that wizard
-    # saves its result into ~/.claude/settings.json, and on festie that path is
-    # a read-only symlink into the Nix store. The scan ran, drafted a proposal,
-    # failed to write, and re-offered itself on the next session — every deploy,
-    # forever. Configuration that a tool cannot persist has to come from here.
-    permissions.defaultMode = "auto";
+    # Derived rather than left to `/auto-mode-setup` for the original reason too:
+    # that wizard saves its result into ~/.claude/settings.json, and on festie
+    # that path is a read-only symlink into the Nix store. The scan ran, drafted
+    # a proposal, failed to write, and re-offered itself on the next session —
+    # every deploy, forever. Configuration that a tool cannot persist has to come
+    # from here.
+    permissions.defaultMode = permissionDefaultMode;
 
     # Suppress the one-time "bypass permissions mode, do you accept?" startup
-    # warning. NOTE: not in the documented settings.json reference, so it may
-    # be a no-op on current Claude Code (the documented equivalent is the
-    # --dangerously-skip-permissions CLI flag). Kept to mirror upstream intent.
+    # prompt, which would otherwise block an unattended session on a fresh
+    # volume. NOTE: not in the documented settings.json reference, so it may be
+    # a no-op on current Claude Code; the documented path is the
+    # --dangerously-skip-permissions CLI flag, which is exactly what Codeman
+    # passes. Load-bearing only for the bare-`claude` case, and only on a host
+    # where the mode above resolves to bypassPermissions.
     skipDangerousModePermissionPrompt = true;
 
+    # Read only while the mode above resolves to `auto`, and kept regardless: it
+    # is the expensive-to-rebuild half of this file, and leaving it in place makes
+    # going back to the classifier a one-word change in hosts/festie rather than
+    # an archaeology exercise. Inert, not stale.
+    #
     # Only `environment` is set. allow / soft_deny / hard_deny fall back to the
     # shipped defaults per-key (17 / 66 / 1 rules — see `claude auto-mode
     # defaults`), and those are a better-maintained baseline than anything

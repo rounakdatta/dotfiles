@@ -181,6 +181,26 @@
     # PVC, so a link made by hand does not survive being deployed elsewhere.
     codeman = {
       enable = true;
+
+      # The permission mode for every session started from the Codeman UI, and
+      # (translated by configs/claude) for a bare `claude` too. This is THE knob:
+      # Codeman passes it as a CLI flag, which outranks ~/.claude/settings.json,
+      # so nothing on the Claude side can override or reveal it.
+      #
+      # Bypass because the entire point of this machine is work that finishes
+      # while nobody is watching it, and a prompt waiting for an answer is the one
+      # failure mode that costs the whole session. Defensible only because festie
+      # is disposable: a container, one PVC, rebuilt from this repo, with Velero
+      # backups behind it. It is NOT defensible on a laptop, and no other host
+      # enables this module, so no other host gets it.
+      #
+      # The cost is real and worth naming: bypass also skips the protected-path
+      # guards on .git and .claude, and the ingress in front of this pod resolves
+      # to a public IP with Tinyauth as the only layer. A Tinyauth bypass now
+      # yields an unprompted shell with a GPG key and cluster credentials, not a
+      # classifier-guarded agent. Set to "auto" to trade latency for that margin.
+      claudePermissionMode = "dangerously-skip-permissions";
+
       linkedCases = {
         personal = "${config.home.homeDirectory}/personal";
         work = "${config.home.homeDirectory}/work";

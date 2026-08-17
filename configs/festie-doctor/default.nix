@@ -109,7 +109,7 @@ let
     # Declared rather than left to the inherited PATH: this runs on a machine
     # whose whole failure mode is an environment that did not come up the way it
     # should have, so it must not depend on one.
-    runtimeInputs = with pkgs; [ coreutils findutils gnugrep git gnupg ncurses openssh ];
+    runtimeInputs = with pkgs; [ coreutils findutils gnugrep git gnupg jq ncurses openssh ];
     text = ''
       fails=0
       pass() { printf '  \033[32mPASS\033[0m  %s\n' "$1"; }
@@ -199,11 +199,54 @@ let
       # broken machine - on a machine that was fine. A checker that pins a value
       # it does not own becomes a liar at the first intentional change, and the
       # symlink section above already proves this file is the nix-managed one.
-      mode="$(sed -n 's/.*"defaultMode":"\([a-zA-Z]*\)".*/\1/p' "$HOME/.claude/settings.json" 2>/dev/null | head -1)"
-      if [ -n "$mode" ]; then
-        pass "claude permission mode: $mode"
-      else
+      #
+      # What it CAN assert is that the two halves of the decision agree, because
+      # there are two files, two vocabularies and one concept:
+      #
+      #   ~/.claude/settings.json   permissions.defaultMode   a bare 'claude'
+      #   ~/.codeman/settings.json  claudeMode                every Codeman session
+      #
+      # Codeman wins wherever they differ - it turns its key into an explicit CLI
+      # flag at spawn, and a command-line argument outranks a settings file - so a
+      # disagreement means the mode you read in one file is NOT the mode the
+      # machine runs, with nothing on the Claude side able to show it.
+      #
+      # This is also the ONLY coverage ~/.codeman/settings.json gets. It cannot be
+      # a home.file (Codeman rewrites it at runtime, see configs/codeman), so the
+      # managed-files section above cannot vouch for it. An activation that dies
+      # before codemanClaudePermissionMode leaves Codeman on its old mode while
+      # .claude/settings.json already carries the new one - which is a mismatch,
+      # and therefore caught here.
+      #
+      # Still no pinned policy: the case statement below is a mapping between two
+      # tools' names for the same mode, which stays true whichever mode is chosen.
+      # Only a MISMATCH fails.
+      mode="$(jq -r '.permissions.defaultMode // empty' "$HOME/.claude/settings.json" 2>/dev/null || true)"
+      codeman_mode="$(jq -r '.claudeMode // empty' "$HOME/.codeman/settings.json" 2>/dev/null || true)"
+      case "$codeman_mode" in
+        dangerously-skip-permissions) codeman_as_claude="bypassPermissions" ;;
+        auto)                         codeman_as_claude="auto" ;;
+        normal | allowedTools)        codeman_as_claude="default" ;;
+        *)                            codeman_as_claude="$codeman_mode" ;;
+      esac
+
+      if [ -z "$mode" ]; then
         fail "claude settings.json has no permissions.defaultMode - missing, or not the nix-managed one"
+      elif [ -z "$codeman_mode" ]; then
+        # Absent is not neutral. Codeman falls back to its OWN default,
+        # dangerously-skip-permissions, whenever the key is missing or the file
+        # cannot be parsed - so this reads as "no opinion" while granting the most
+        # permissive mode there is.
+        fail "codeman settings.json has no claudeMode - Codeman falls back to bypass"
+        note "activation should have written it; see configs/codeman"
+        note "bare claude is on: $mode"
+      elif [ "$mode" = "$codeman_as_claude" ]; then
+        pass "claude permission mode: $mode (both layers agree)"
+      else
+        fail "permission mode disagrees between layers, and Codeman is the one that wins"
+        note "bare claude   ~/.claude/settings.json   $mode"
+        note "codeman       ~/.codeman/settings.json  $codeman_mode (= $codeman_as_claude)"
+        note "every session you start from the UI runs the codeman one"
       fi
       if grep -q "pinentry" "$HOME/.gnupg/gpg-agent.conf" 2>/dev/null; then
         pass "gpg-agent has a pinentry-program"
