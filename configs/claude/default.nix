@@ -328,10 +328,15 @@ let
     cleanupPeriodDays = 99999;
     alwaysThinkingEnabled = true;
 
-    # Auto-approve nix-managed project-local MCP servers (from <repo>/.mcp.json).
-    # Supersedes the old stale enabledMcpjsonServers=["grafana"] (dropped: no server
-    # is named "grafana" anymore — they're notprod/prod-grafana-lyric now).
-    enableAllProjectMcpServers = true;
+    # Trust only the explicitly-listed project MCP servers rather than
+    # auto-approving whatever a given <repo>/.mcp.json declares. The allowlist is
+    # derived from the same inventory that writes the servers
+    # (writeProjectLocalMcpServers), so the two can never drift; the declared
+    # project servers still load, and anything undeclared does not auto-run.
+    # (Supersedes the old stale enabledMcpjsonServers=["grafana"].)
+    enableAllProjectMcpServers = false;
+    enabledMcpjsonServers = lib.unique
+      (lib.concatMap (p: builtins.attrNames p.mcpServers) mcpInventory.projectLocal);
 
     # Derived from configs/codeman — see the table above for why this is not a
     # literal, and why it governs only a BARE `claude` (Tailscale SSH, cron, a
@@ -420,7 +425,7 @@ let
           hooks = [
             {
               type = "command";
-              command = "bunx github:nitsanavni/bash-history-mcp hook";
+              command = "bunx github:nitsanavni/bash-history-mcp#5243b0156580bbac7395066f5c79bfd54d16e654 hook";
             }
           ];
         }
@@ -457,7 +462,7 @@ let
       bash-history = {
         command = "bunx";
         args = [
-          "github:nitsanavni/bash-history-mcp"
+          "github:nitsanavni/bash-history-mcp#5243b0156580bbac7395066f5c79bfd54d16e654"
           "mcp"
         ];
       };
@@ -465,7 +470,7 @@ let
         command = "npx";
         args = [
           "-y"
-          "mcp-remote@latest"
+          "mcp-remote@0.1.38"
           "http://roundroid:8080/mcp"
           "--allow-http"
           "--header"
@@ -478,7 +483,7 @@ let
           "-c"
           ''
             exec env GOOGLE_MAPS_API_KEY="$(pass show api-keys/google-maps)" \
-              npx -y @cablate/mcp-google-map --stdio
+              npx -y @cablate/mcp-google-map@0.0.55 --stdio
           ''
         ];
       };
@@ -507,7 +512,7 @@ let
                   STRAVA_CLIENT_SECRET="$(pass show api-keys/strava-client-secret)" \
                   STRAVA_ACCESS_TOKEN="$(pass show api-keys/strava-access-token)" \
                   STRAVA_REFRESH_TOKEN="$(pass show api-keys/strava-refresh-token)" \
-                  npx -y @r-huijts/strava-mcp-server
+                  npx -y @r-huijts/strava-mcp-server@1.2.1
               ''
             ];
           };
@@ -517,7 +522,7 @@ let
               "-c"
               ''
                 exec env HEVY_API_KEY="$(pass show api-keys/hevy)" \
-                  npx -y hevy-mcp
+                  npx -y hevy-mcp@6.1.4
               ''
             ];
           };
@@ -592,7 +597,7 @@ let
       args = [
         "-c"
         ''
-          exec npx -y mcp-remote@latest https://prototype.lyric.tech/mcp \
+          exec npx -y mcp-remote@0.1.38 https://prototype.lyric.tech/mcp \
             --header "Authorization: Bearer $(pass show api-keys/lyric-prototype)"
         ''
       ];
