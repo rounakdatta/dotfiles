@@ -19,6 +19,7 @@
     ./cargo
     ./mic
     ./claude-skills
+    ./veans
     ./atuin
     ./hammerspoon
     ./screensaver

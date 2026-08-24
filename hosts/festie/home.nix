@@ -213,6 +213,27 @@
       };
     };
 
+    # The Vikunja CLI, and the reason this host has it: Codeman sessions are
+    # where todos actually get filed, by talking to an agent rather than by
+    # opening the web UI. Enabled only here — the laptop would need a different
+    # server URL anyway, since the public hostname is behind tinyauth and
+    # answers a Bearer token with 401.
+    #
+    # The IDs are this account's real ones, discovered from the API rather than
+    # assumed: 5 is Life (already the account's default_project_id), 20 its
+    # Kanban view, and 5 the "Backlog" column that view ships with — which veans
+    # already treats as an alias for `todo`, so nothing new is created on a board
+    # I actually look at.
+    veans = {
+      enable = true;
+      server = "http://vikunja.apps.svc.cluster.local:3456";
+      projectId = 5;
+      viewId = 20;
+      todoBucketId = 5;
+      username = "rounakdatta";
+      userId = 1;
+    };
+
     # `festie-doctor` — one command that says whether this container actually
     # converged. Worth shipping rather than remembering: the failure it detects
     # is silent by construction, and the entrypoint deliberately continues past

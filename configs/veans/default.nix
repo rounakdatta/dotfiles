@@ -1,0 +1,253 @@
+{ config, lib, pkgs, ... }:
+
+# veans — the Vikunja CLI, plus the two pieces of glue that make it usable by an
+# agent on this box.
+#
+# Upstream ships veans as a subdirectory of the Vikunja monorepo with no tagged
+# release, so this builds it from a pinned commit rather than tracking a version.
+#
+# Three things are deliberately NOT left to the caller:
+#
+#   1. The token. veans resolves credentials keychain -> VEANS_TOKEN -> a
+#      credentials file. festie has no keychain (no dbus, no libsecret in the
+#      container), so VEANS_TOKEN is the only backend that works, and the
+#      wrapper below fills it from `pass` — the same way every MCP server on this
+#      box gets its secrets. Nothing has to remember to export anything.
+#
+#   2. Dates. See vikunja-when's docstring: coreutils `date` here silently
+#      answers in UTC for any TZ you give it, because the container has no
+#      zoneinfo. Shipping the helper alongside the binary is what stops every
+#      agent-created task landing 5h30m late.
+#
+#   3. tzdata itself. `date` lying about timezones is a whole-machine bug, not a
+#      veans one, so this module also puts a real zoneinfo tree on the box and
+#      points TZDIR at it. vikunja-when does not depend on that (python finds
+#      tzdata through its own store path) — this is for everything else.
+
+let
+  cfg = config.programs.veans;
+
+  veans = pkgs.buildGoModule (finalAttrs: {
+    pname = "veans";
+    version = "0-unstable-2026-08-22";
+
+    src = pkgs.fetchFromGitHub {
+      owner = "go-vikunja";
+      repo = "vikunja";
+      rev = "762dc4ebe6f3fbff15d90a0a119f0c6a4720e033";
+      # The monorepo carries the whole API + frontend; veans is a few hundred KB
+      # of it. Without this the image pays for a checkout it never compiles.
+      sparseCheckout = [ "veans" ];
+      hash = "sha256-GE8qRBdXgF/CrUANgvfEgbahphrGynf/gVHRQIQ3DGY=";
+    };
+
+    modRoot = "veans";
+    vendorHash = "sha256-ac2M7wNlOn6ku8sn/rZmPCSGPodw88ufR8tr1lh54II=";
+    subPackages = [ "cmd/veans" ];
+
+    # nixpkgs pins Go 1.26 and Nix builds have no network, so GOTOOLCHAIN cannot
+    # fetch the 1.27.0 that go.mod asks for — buildGoModule sets GOTOOLCHAIN=local
+    # for exactly that reason. Nothing in veans actually uses 1.27 language
+    # features (verified by building it under 1.26 with GOTOOLCHAIN=local), so the
+    # directive is a floor rather than a requirement. Relaxing it is much cheaper
+    # than carrying a second Go toolchain in the closure. Revisit when nixpkgs
+    # catches up: drop this and the build should be unchanged.
+    postPatch = ''
+      substituteInPlace veans/go.mod \
+        --replace-fail 'go 1.27.0' 'go ${lib.versions.majorMinor pkgs.go.version}.0'
+    '';
+
+    ldflags = [
+      "-s"
+      "-w"
+      "-X"
+      "main.version=${finalAttrs.version}"
+    ];
+
+    # The e2e suite needs a live Vikunja API (VEANS_E2E_API_URL); the unit tests
+    # do not, and are worth keeping as a build gate.
+    excludedPackages = [ "e2e" ];
+
+    meta = {
+      description = "Agent-friendly CLI for Vikunja";
+      homepage = "https://github.com/go-vikunja/vikunja/tree/main/veans";
+      license = lib.licenses.agpl3Plus;
+      mainProgram = "veans";
+    };
+  });
+
+  # Not writers.writePython3Bin: that runs flake8 at build time, and this script
+  # is a standalone file worth reading (and editing) as one.
+  vikunja-when = pkgs.stdenvNoCC.mkDerivation {
+    name = "vikunja-when";
+    dontUnpack = true;
+    installPhase = ''
+      runHook preInstall
+      install -Dm0755 ${./vikunja-when.py} $out/bin/vikunja-when
+      substituteInPlace $out/bin/vikunja-when \
+        --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
+      runHook postInstall
+    '';
+    meta.mainProgram = "vikunja-when";
+  };
+
+  # The wrapper IS the interface — `veans` on PATH is this, and the real binary
+  # is never called directly. writeShellApplication so shellcheck runs on it at
+  # build time.
+  veansWrapped = pkgs.writeShellApplication {
+    name = "veans";
+    runtimeInputs = [ pkgs.coreutils cfg.passPackage ];
+    text = ''
+      if [ -z "''${VEANS_TOKEN:-}" ]; then
+        # Respect an already-exported token (CI, or a deliberate override).
+        if ! VEANS_TOKEN="$(pass show ${cfg.tokenPassPath} 2>/dev/null | head -n1)" \
+           || [ -z "$VEANS_TOKEN" ]; then
+          cat >&2 <<'MSG'
+      veans: could not read ${cfg.tokenPassPath} from pass.
+
+      The GPG key is passphrase-protected and the agent's cache dies with the pod,
+      so the first secret read after a restart needs an unlock. pinentry-curses
+      draws on a tty, so this cannot be answered from a script or an agent tool
+      call - run `festie-unlock` (or any `pass show`) in a terminal pane, then
+      retry.
+      MSG
+          exit 1
+        fi
+        export VEANS_TOKEN
+      fi
+
+      exec ${lib.getExe veans} "$@"
+    '';
+  };
+
+  configFile = ''
+    # Generated by dotfiles configs/veans -- edits here are overwritten on the
+    # next home-manager activation. Change the module instead.
+    #
+    # Hand-shaped rather than produced by `veans init`: init's job is to mint a
+    # *bot* user and share one project with it, which is the wrong shape for a
+    # personal assistant that should reach the whole account. The credential is
+    # a personal API token instead, so `veans api` sees every project.
+    #
+    # server: the in-cluster Service, NOT https://${cfg.publicHost}. That
+    # hostname sits behind tinyauth forward-auth, which answers any Bearer-token
+    # request with 401 + x-tinyauth-location before Vikunja ever sees it. festie
+    # is in the same cluster, so this URL is both the only one that works and the
+    # one that keeps the traffic off the internet.
+    server: ${cfg.server}
+
+    # A FALLBACK for the curated commands only. It is this account's own
+    # default_project_id, so a stray bare `veans create` lands where the web UI
+    # would have put it rather than somewhere new. The skill's rule is to ask
+    # which project and then address it explicitly through `veans api`.
+    project_id: ${toString cfg.projectId}
+    project_identifier: ""
+    view_id: ${toString cfg.viewId}
+
+    # Only `todo` is real. That project's Kanban has a single "Backlog" column,
+    # which veans already treats as an alias for todo; the other four statuses
+    # have no bucket and are left at 0 on purpose, because populating them would
+    # mean creating new columns on a board someone actually looks at. Consequence:
+    # set `done` through `veans api` instead of chasing bucket moves.
+    buckets:
+      todo: ${toString cfg.todoBucketId}
+      in_progress: 0
+      in_review: 0
+      done: 0
+      scrapped: 0
+
+    # Not a bot. This is the human account the token belongs to; veans uses these
+    # two fields as a credential-lookup key and for display.
+    bot:
+      username: ${cfg.username}
+      user_id: ${toString cfg.userId}
+  '';
+in
+{
+  options.programs.veans = {
+    enable = lib.mkEnableOption "the veans Vikunja CLI, wrapped to read its token from pass";
+
+    tokenPassPath = lib.mkOption {
+      type = lib.types.str;
+      default = "api-keys/vikunja";
+      description = "pass entry holding the Vikunja personal API token.";
+    };
+
+    passPackage = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.pass;
+      defaultText = lib.literalExpression "pkgs.pass";
+      description = ''
+        The pass build to call from the wrapper. Defaults to plain pkgs.pass
+        rather than config.programs.password-store.package so this module does
+        not force that module on.
+      '';
+    };
+
+    server = lib.mkOption {
+      type = lib.types.str;
+      example = "http://vikunja.apps.svc.cluster.local:3456";
+      description = "Vikunja base URL veans talks to. See configFile's note on why this is not the public hostname.";
+    };
+
+    publicHost = lib.mkOption {
+      type = lib.types.str;
+      default = "vikunja.taptappers.club";
+      description = "The tinyauth-fronted hostname, named in the generated config purely to explain why it is not used.";
+    };
+
+    projectId = lib.mkOption { type = lib.types.int; description = "Fallback project for curated commands."; };
+    viewId = lib.mkOption { type = lib.types.int; description = "Kanban view backing that project's buckets."; };
+    todoBucketId = lib.mkOption { type = lib.types.int; description = "Bucket ID standing in for `todo`."; };
+    username = lib.mkOption { type = lib.types.str; description = "Vikunja account the token belongs to."; };
+    userId = lib.mkOption { type = lib.types.int; description = "That account's numeric ID."; };
+
+    configRoots = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "${config.home.homeDirectory}/personal" ];
+      description = ''
+        Directories to drop .veans.yml into. veans walks upward from cwd all the
+        way to /, so $HOME is deliberately NOT the default: a .veans.yml there
+        would also resolve inside ~/work, where a personal todo list has no
+        business being.
+      '';
+    };
+
+    installTzdata = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Put a zoneinfo tree on the box and point TZDIR at it. Off by default
+        nowhere, because without it coreutils `date` silently ignores TZ and
+        answers in UTC — which is a footgun far wider than veans.
+      '';
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    home.packages = [ veansWrapped vikunja-when ]
+      ++ lib.optional cfg.installTzdata pkgs.tzdata;
+
+    home.sessionVariables = lib.mkIf cfg.installTzdata {
+      TZDIR = "${pkgs.tzdata}/share/zoneinfo";
+    };
+
+    # Written at activation rather than via home.file so a hand-edit is possible
+    # for a session, and so a missing ~/personal (fresh PVC, before the Codeman
+    # cases are linked) is a skip rather than a failed activation. Same reasoning
+    # as configs/claude's project-local .mcp.json.
+    home.activation.veansConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] (
+      lib.concatMapStringsSep "\n"
+        (root: ''
+          if [ -d ${lib.escapeShellArg root} ]; then
+            $DRY_RUN_CMD install -m0644 ${
+              pkgs.writeText "veans.yml" configFile
+            } ${lib.escapeShellArg "${root}/.veans.yml"}
+          else
+            echo "veans: skipping ${root}/.veans.yml (no such directory yet)"
+          fi
+        '')
+        cfg.configRoots
+    );
+  };
+}
