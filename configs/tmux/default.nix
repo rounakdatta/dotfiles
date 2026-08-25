@@ -1,8 +1,21 @@
 { config, pkgs, ... }:
 let
   isDarwin = pkgs.stdenv.isDarwin;
+
+  # Raw context names on this fleet run 47-59 characters
+  # ("arn:aws:eks:us-east-1:826173816446:cluster/demo-eks-cluster"), which on a
+  # phone is the whole status bar. This collapses them to provider + the cluster's
+  # own name -- the only part anyone reads at a glance -- and hard-caps the result
+  # so an unrecognised shape can never take over the bar.
+  kube-context = pkgs.writeShellApplication {
+    name = "kube-context";
+    runtimeInputs = [ pkgs.coreutils pkgs.gnused ];
+    text = builtins.readFile ./kube-context.sh;
+  };
 in
 {
+  home.packages = [ kube-context ];
+
   programs.tmux = {
     enable = true;
     plugins = with pkgs; [
@@ -100,7 +113,10 @@ in
 
       # Toggle kube status display for current window (Ctrl+k 8, like k8s!)
       bind -n C-k switch-client -T k8s-prefix
-      bind -T k8s-prefix 8 if-shell -F "#{@kube-status}" "set-window-option -u @kube-status" "set-window-option @kube-status 1"
+      # Shown by default now, so the toggle has to write an explicit 0 rather than
+      # unsetting: an unset window option falls back to the global, which is on.
+      set -g @kube-status 1
+      bind -T k8s-prefix 8 if-shell -F "#{==:#{@kube-status},1}" "set-window-option @kube-status 0" "set-window-option @kube-status 1"
 
       # enable mouse support for switching panes/windows
       setw -g mouse on
@@ -187,13 +203,15 @@ in
         ''
       else
         ''
-          tm_battery="#[fg=$base0F,bg=$base00] ♥ #(acpi --battery | awk \'{gsub(\",\", \"\"); print \$4}\')"
+          # Guarded: a container has no battery and ships no acpi, so this ran a
+          # missing command on every status refresh. Absent acpi now renders nothing.
+          tm_battery="#[fg=$base0F,bg=$base00]#(command -v acpi >/dev/null 2>&1 && acpi --battery | awk \'{gsub(\",\", \"\"); print \" ♥ \" \$4}\')"
         ''
     )
     + ''
       tm_date="#[default,bg=$base00,fg=$base0C] %I:%M %p %Z"
       tm_host="#[fg=$base0E,bg=$base00] #h "
-      tm_kube_status="#[fg=$base0D,bg=$base00]#{?@kube-status, #(command -v kubectl >/dev/null 2>&1 && kubectl config current-context 2>/dev/null | sed 's/^/⎈ /'),}"
+      tm_kube_status="#[fg=$base0D,bg=$base00]#{?#{==:#{@kube-status},1}, #(kube-context),}"
       set -g status-right "$tm_tunes $tm_kube_status $tm_battery $tm_date $tm_host"
     '';
   };
