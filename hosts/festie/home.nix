@@ -213,6 +213,14 @@
       };
     };
 
+    # Asia/Kolkata, and the zoneinfo needed to mean it. festie has no NixOS layer
+    # to carry `time.timeZone`, and no zoneinfo database at all, so until now
+    # `date` answered in UTC for every TZ it was given -- silently. See the module.
+    timezone = {
+      enable = true;
+      zone = "Asia/Kolkata";
+    };
+
     # The Vikunja CLI, and the reason this host has it: Codeman sessions are
     # where todos actually get filed, by talking to an agent rather than by
     # opening the web UI. Enabled only here — the laptop would need a different

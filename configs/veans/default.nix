@@ -19,10 +19,11 @@
 #      zoneinfo. Shipping the helper alongside the binary is what stops every
 #      agent-created task landing 5h30m late.
 #
-#   3. tzdata itself. `date` lying about timezones is a whole-machine bug, not a
-#      veans one, so this module also puts a real zoneinfo tree on the box and
-#      points TZDIR at it. vikunja-when does not depend on that (python finds
-#      tzdata through its own store path) — this is for everything else.
+#   3. Independence from however the system clock is configured. `date` lying
+#      about timezones is a whole-machine bug and is fixed in configs/timezone,
+#      but vikunja-when deliberately does not depend on that fix: python's
+#      zoneinfo finds tzdata through its own store path, so the helper stays
+#      correct even on a host where TZ/TZDIR are unset or wrong.
 
 let
   cfg = config.programs.veans;
@@ -213,25 +214,10 @@ in
       '';
     };
 
-    installTzdata = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = ''
-        Put a zoneinfo tree on the box and point TZDIR at it. Off by default
-        nowhere, because without it coreutils `date` silently ignores TZ and
-        answers in UTC — which is a footgun far wider than veans.
-      '';
-    };
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ veansWrapped vikunja-when ]
-      ++ lib.optional cfg.installTzdata pkgs.tzdata;
-
-    home.sessionVariables = lib.mkIf cfg.installTzdata {
-      TZDIR = "${pkgs.tzdata}/share/zoneinfo";
-    };
-
+    home.packages = [ veansWrapped vikunja-when ];
     # Written at activation rather than via home.file so a hand-edit is possible
     # for a session, and so a missing ~/personal (fresh PVC, before the Codeman
     # cases are linked) is a skip rather than a failed activation. Same reasoning
