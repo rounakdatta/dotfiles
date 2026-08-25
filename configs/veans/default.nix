@@ -205,12 +205,23 @@ in
 
     configRoots = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [ "${config.home.homeDirectory}/personal" ];
+      default = [ config.home.homeDirectory ];
       description = ''
-        Directories to drop .veans.yml into. veans walks upward from cwd all the
-        way to /, so $HOME is deliberately NOT the default: a .veans.yml there
-        would also resolve inside ~/work, where a personal todo list has no
-        business being.
+        Directories to drop .veans.yml into.
+
+        $HOME, so that every directory is covered by exactly one file: veans
+        walks upward from cwd all the way to /, so a config at $HOME resolves
+        from anywhere, and anything narrower means `no .veans.yml found` the
+        moment you cd somewhere else.
+
+        This was ~/personal at first, on the reasoning that a personal todo list
+        has no business being reachable from ~/work. That is a real argument and
+        the owner has overruled it deliberately: the assistant is meant to be
+        answerable from whatever session happens to be open, work ones included,
+        and a skill that is advertised everywhere but only functions in one
+        subtree is worse than one that simply works.
+
+        Narrow it back by listing specific roots if that trade ever changes.
       '';
     };
 
