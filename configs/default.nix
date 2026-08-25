@@ -19,6 +19,8 @@
     ./cargo
     ./mic
     ./claude-skills
+    ./timezone
+    ./veans
     ./atuin
     ./hammerspoon
     ./screensaver

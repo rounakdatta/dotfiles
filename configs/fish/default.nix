@@ -20,9 +20,13 @@ in
 
       set NIXPKGS_ALLOW_UNFREE 1
             
-      # although we've set the NixOS-level setting, remember that Chrome would require this `TZ` envvar
-      # otherwise, it defaults to UTC
-      set TZ Asia/Kolkata
+      # Chrome reads TZ from the environment rather than the NixOS-level setting,
+      # so it needs to be exported, not just set: a bare `set` makes a shell-local
+      # variable that no child process ever sees. -gx also means this is one
+      # declaration rather than a second, quieter opinion -- hosts with no system
+      # layer get the same value from configs/timezone, which ships the zoneinfo
+      # database that makes any of it resolvable in the first place.
+      set -gx TZ Asia/Kolkata
     '' +
     ''
       set -gx LC_ALL en_US.UTF-8

@@ -45,4 +45,39 @@ in
       fi
     fi
   '';
+
+  # Trust our own key. This is the other half of importGpgKey, and it is easy to
+  # believe it is unnecessary: ownertrust is NOT part of a key. It lives in
+  # trustdb.gpg, which is per-machine, and `gpg --import` never carries it --
+  # moving it is a separate --export-ownertrust/--import-ownertrust pair.
+  #
+  # So every host bootstrapped by the import above ends up holding the secret key
+  # while trusting it not at all. The failure is lopsided, which is why it hid for
+  # so long: decryption needs no trust, so `pass show` and every pass-backed MCP
+  # server worked fine, while *encryption* failed with "There is no assurance this
+  # key belongs to the named user" / "Unusable public key". `pass insert` was
+  # therefore impossible on festie from the day it was built, and nothing said so
+  # until someone tried to write a secret rather than read one. (Confirmed: the
+  # password store's history contains exactly one commit ever authored on festie.)
+  #
+  # ninezeroes and trueswiftie never showed it because the key was generated on a
+  # laptop, and gpg gives ultimate ownertrust to keys it generates itself.
+  #
+  # Idempotent: a no-op once the record exists.
+  home.activation.trustOwnGpgKey = lib.hm.dag.entryAfter [ "importGpgKey" ] ''
+    GPG="${pkgs.gnupg}/bin/gpg"
+    # --export-ownertrust keys its records by full 40-char fingerprint, while
+    # lib/user.nix carries the 16-char long ID. Ask gpg to map one to the other
+    # rather than keeping a second copy of the fingerprint in this repo.
+    fpr="$("$GPG" --with-colons --fingerprint ${user.gpgKey} 2>/dev/null \
+          | ${pkgs.gawk}/bin/awk -F: '$1 == "fpr" { print $10; exit }')"
+    if [ -n "$fpr" ]; then
+      if ! "$GPG" --export-ownertrust 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q "^$fpr:"; then
+        # 6 = ultimate, which is what "this key is mine" means, and exactly what a
+        # locally generated key is assigned automatically.
+        echo "$fpr:6:" | "$GPG" --import-ownertrust 2>/dev/null || true
+        echo "gnupg: marked own key $fpr ultimately trusted (encryption, e.g. pass insert, needs this)"
+      fi
+    fi
+  '';
 }
