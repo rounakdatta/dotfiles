@@ -128,6 +128,12 @@ in
       "lyric-tech/mic/mic"
       "guumaster/tap/hostctl"
       "googleworkspace-cli"
+      # Drives Chrome for the automate-mic-doctor-refresh skill, which finishes
+      # the browser half of `mic doctor` without handing over the terminal.
+      # This was installed by hand for months, so the skill depended on a
+      # binary no host declared and simply did not exist on festie. Declared on
+      # both hosts now; festie gets it from npm, same version.
+      "agent-browser"
     ];
 
     casks = [
