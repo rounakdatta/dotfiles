@@ -114,6 +114,31 @@
       gnupg
       gopass
       passExtensions.pass-update
+
+      # A browser, on the box whose package list opens by saying it carries no
+      # GUI. The exception is deliberate and narrow: the
+      # automate-mic-doctor-refresh skill refreshes expired AWS/GCP/Azure CLI
+      # sessions by driving a consent screen, and `mic doctor` is otherwise
+      # unfinishable here — every provider login ends at a page somebody has to
+      # click. Nothing renders to a human; Chrome talks to Xvfb and the agent
+      # reads the accessibility tree.
+      #
+      # Verified on festie 2026-09-08: navigator.webdriver false, and
+      # accounts.google.com serves the real sign-in page rather than "this
+      # browser may not be secure".
+      #
+      # google-chrome, not chromium: Google's sign-in risk engine is measurably
+      # friendlier to a stock Chrome build, and the skill's whole premise is
+      # not tripping that engine. Unfree, which is already allowed for this
+      # host in flake.nix (claude-code needs it too).
+      google-chrome
+      # Xvfb, for the display Chrome needs. This is the xorg-server package
+      # rather than xvfb-run on purpose: xvfb-run does not put Xvfb on PATH,
+      # and the skill needs ONE long-lived X server shared by every command.
+      # Wrapping each command in xvfb-run tears the server down when that
+      # command exits and kills the browser with it — the sequence the skill is
+      # built on then loses all state between steps.
+      xorg-server
     ];
   };
 
@@ -173,6 +198,16 @@
       enablePrivate = true;
       privateRepo.url = "git@github.com:rounakdatta/agent-smith.git";
     };
+
+    # The CLI the automate-mic-doctor-refresh skill drives Chrome through.
+    # It was installed by hand on the laptop for months, which meant the skill
+    # depended on a binary no host declared — so it simply was not here, and
+    # its scripts failed with `exec: agent-browser: not found`. Pinned rather
+    # than floating: the skill's documented screens, flags and JSON shapes were
+    # verified against exactly this version.
+    npm-packages.packages = [
+      "agent-browser@0.37.0"
+    ];
 
     # Codeman is this machine's UI, and the cases it offers are the working
     # directories you actually land in. Declared here so a rebuilt festie comes
