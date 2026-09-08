@@ -602,6 +602,41 @@ let
         ''
       ];
     };
+    # Ink (https://get.ink/mcp): an agent-facing infinite canvas. Remote HTTP
+    # MCP bridged to stdio via mcp-remote, same shape as lyric-prototype above.
+    #
+    # An Ink token is scoped to ONE board and grants write access to that board
+    # and nothing else, so header auth means one server entry per board — hence
+    # the -lyric suffix, leaving ink-personal free for a global entry later.
+    # Secrets live under a getink/ namespace keyed by board:
+    #   pass insert --multiline api-keys/getink/lyric
+    #   <token on line 1>
+    #   board: brd_9r5fvcbqbdt2r8x7wgjc
+    #   url:   https://get.ink/b/brd_9r5fvcbqbdt2r8x7wgjc
+    #   title: Lyric
+    #
+    # The board id is NOT a secret, but it still has to reach a fresh session,
+    # and the work/ CLAUDE.md files are not managed here — so it rides along as
+    # line 2 of the same entry. That is why this lookup takes `head -n1` where
+    # the single-line entries above do not: `pass show` prints the whole file,
+    # and the trailing metadata would otherwise land in the auth header.
+    #
+    # Two things the API will not tell you: a token is displayed only once, at
+    # board creation, and an unclaimed board is deleted after 30 days. Both are
+    # prerequisites for this entry doing anything, not footnotes.
+    #
+    # The REST API is CORS-open bearer auth and needs no local state, so this
+    # entry is ergonomics — `curl` with the same pass lookup works without it.
+    ink-lyric = {
+      command = "bash";
+      args = [
+        "-c"
+        ''
+          exec npx -y mcp-remote@0.1.38 https://get.ink/mcp \
+            --header "Authorization: Bearer $(pass show api-keys/getink/lyric | head -n1)"
+        ''
+      ];
+    };
   };
 in
 {
