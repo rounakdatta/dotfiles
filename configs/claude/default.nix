@@ -637,6 +637,20 @@ let
         ''
       ];
     };
+    # Lyric Support Tracker: every eng_support* Slack thread as a ticket. Read-only.
+    # Remote HTTP bridged to stdio, same shape as lyric-prototype above. The key is
+    # shown once, at https://tracker.lyric.tech/settings:
+    #   pass insert api-keys/lyric/support-tracker
+    support-tracker-lyric = {
+      command = "bash";
+      args = [
+        "-c"
+        ''
+          exec npx -y mcp-remote@0.1.38 https://tracker.lyric.tech/supportservice/mcp \
+            --header "Authorization: Bearer $(pass show api-keys/lyric/support-tracker)"
+        ''
+      ];
+    };
   };
 in
 {
