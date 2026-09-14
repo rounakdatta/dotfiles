@@ -9,9 +9,10 @@
 --     to its pane. A blocked question (asking) bounces hard until answered.
 --   * WORKING (grey, left edge, smaller) — one per session currently working,
 --     stacked in a column centered on the left edge. They just sit there and
---     gently vibrate; an ambient "how many are grinding" count. No label, no
---     click. When a session finishes, its grey working bot slides off the left
---     edge and an orange waiting bot appears — the whole lifecycle at a glance.
+--     gently vibrate; an ambient "how many are grinding" count. Hovering one
+--     holds it still and pops a small pill naming its session. When a session
+--     finishes, its grey working bot slides off the left edge and an orange
+--     waiting bot appears — the whole lifecycle at a glance.
 --
 -- @TMUX@, @LOGO@ and @LOGO_WORKING@ are substituted by Nix at build time.
 
@@ -53,6 +54,15 @@ local LABEL_H = 0.20
 local LABEL_COLOR = { white = 1.0 }
 local HOVER = { red = 0.10, green = 0.10, blue = 0.12, alpha = 0.22 }
 local CLEARC = { white = 0, alpha = 0 }
+-- Working-bot hover tooltip: a small dark pill to the right naming the session.
+local TIP_FONT = 11
+local TIP_FONT_NAME = "Menlo" -- monospace => exact width math (see showTip)
+local TIP_PAD = 8 -- horizontal text padding inside the pill
+local TIP_H = 22 -- pill height (px)
+local TIP_GAP = 8 -- gap between the bot and the pill
+local TIP_MAX = 52 -- max chars before middle-truncating the label
+local TIP_BG = { red = 0.11, green = 0.11, blue = 0.13, alpha = 0.95 }
+local TIP_FG = { white = 0.96 }
 
 local LOGO_IMG = hs.image.imageFromPath(LOGO)
 local WORK_IMG = hs.image.imageFromPath(LOGO_WORKING)
@@ -91,6 +101,42 @@ local function windowInfo(pane)
     idx = nil
   end
   return name, idx
+end
+
+-- Abbreviate the home prefix of a path to "~" for a compact display.
+local function abbrevHome(p)
+  if not p then
+    return nil
+  end
+  local home = os.getenv("HOME")
+  if home and p:sub(1, #home) == home then
+    return "~" .. p:sub(#home + 1)
+  end
+  return p
+end
+
+-- Keep the head and tail of an over-long string, eliding the middle — so both
+-- the window name (start) and the cwd leaf (end) survive.
+local function truncateMiddle(s, max)
+  if #s <= max then
+    return s
+  end
+  local keep = max - 1
+  local head = math.ceil(keep / 2)
+  return s:sub(1, head) .. "…" .. s:sub(#s - (keep - head) + 1)
+end
+
+-- Human identity for a working session's tooltip: tmux window name (+ pane
+-- index when known) and the ~-abbreviated cwd, e.g. "byoc (2)  ·  ~/work/byoc".
+local function sessionLabel(session)
+  local wname, pidx = windowInfo(session and session.tmux_pane)
+  local name = wname or basename(session and session.cwd) or "claude"
+  if pidx then
+    name = name .. " (" .. pidx .. ")"
+  end
+  local dir = abbrevHome(session and session.cwd)
+  local text = (dir and dir ~= "") and (name .. "  ·  " .. dir) or name
+  return truncateMiddle(text, TIP_MAX)
 end
 
 -- Largest font (<= LABEL_FONT, down to MIN_FONT) at which "name .. suffix" fits
@@ -213,6 +259,54 @@ local function workSlotY(f, n, i) -- working bot i (0-based) of n, vertical colu
   return f.y + (f.h - total) / 2 + i * (WORK_SIZE + GAP)
 end
 
+-- --------------------------------------------------- working-bot tooltip --
+-- One shared pill, reused across bots (only one is hovered at a time). Sized to
+-- its text using the monospace advance so it hugs the label. M.tipOwner guards
+-- against a stale bot's mouseExit hiding the pill after another's mouseEnter.
+local function ensureTip()
+  if M.tip then
+    return M.tip
+  end
+  local c = hs.canvas.new({ x = 0, y = 0, w = 10, h = TIP_H })
+  c:appendElements({
+    type = "rectangle",
+    action = "fill",
+    fillColor = TIP_BG,
+    roundedRectRadii = { xRadius = 6, yRadius = 6 },
+    frame = { x = 0, y = 0, w = 10, h = TIP_H },
+  })
+  c:appendElements({
+    type = "text",
+    text = "",
+    textFont = TIP_FONT_NAME,
+    textSize = TIP_FONT,
+    textColor = TIP_FG,
+    textAlignment = "left",
+    frame = { x = TIP_PAD, y = (TIP_H - TIP_FONT) / 2 - 1, w = 10, h = TIP_FONT + 4 },
+  })
+  c:level(hs.canvas.windowLevels.overlay)
+  c:behaviorAsLabels({ "canJoinAllSpaces", "stationary" })
+  c:canvasMouseEvents(false, false, false) -- the pill itself ignores the mouse
+  M.tip = c
+  return c
+end
+
+local function showTip(text, x, y)
+  local c = ensureTip()
+  local w = math.floor(#text * TIP_FONT * MONO_RATIO) + 2 * TIP_PAD
+  c:frame({ x = x, y = y, w = w, h = TIP_H })
+  c[1].frame = { x = 0, y = 0, w = w, h = TIP_H }
+  c[2].frame = { x = TIP_PAD, y = (TIP_H - TIP_FONT) / 2 - 1, w = w - 2 * TIP_PAD, h = TIP_FONT + 4 }
+  c[2].text = text
+  c:show()
+end
+
+local function hideTip()
+  if M.tip then
+    M.tip:hide()
+  end
+end
+
 -- ------------------------------------------------------------- pendants --
 -- Waiting bot. Element order: 1 = hover backing, 2 = bot, 3 = label.
 local function makePendant(session, bobPhase, startY)
@@ -282,7 +376,8 @@ local function makePendant(session, bobPhase, startY)
   return pend
 end
 
--- Working bot: just the grey logo, no label, no interaction.
+-- Working bot: the grey logo. Presence-only, except that hovering pops a small
+-- pill naming its session (and the bot holds still while you inspect it).
 local function makeWorkingPendant(session, vibPhase, startX, slotY)
   local c = hs.canvas.new({ x = startX, y = slotY, w = WORK_SIZE, h = WORK_SIZE })
   if WORK_IMG then
@@ -304,17 +399,35 @@ local function makeWorkingPendant(session, vibPhase, startX, slotY)
   end
   c:level(hs.canvas.windowLevels.overlay)
   c:behaviorAsLabels({ "canJoinAllSpaces", "stationary" })
-  c:show()
-  return {
+  c:clickActivating(false)
+  c:canvasMouseEvents(false, false, true) -- enter/exit only (no click)
+
+  local pend = {
     canvas = c,
     session = session,
     vibPhase = vibPhase,
+    hovered = false,
     placed = false,
     curX = startX,
     curY = slotY,
     targetY = slotY,
     dying = false,
   }
+  c:mouseCallback(function(_, message)
+    if message == "mouseEnter" then
+      pend.hovered = true
+      M.tipOwner = pend
+      showTip(sessionLabel(pend.session), pend.curX + WORK_SIZE + TIP_GAP, pend.curY + (WORK_SIZE - TIP_H) / 2)
+    elseif message == "mouseExit" then
+      pend.hovered = false
+      if M.tipOwner == pend then
+        hideTip()
+        M.tipOwner = nil
+      end
+    end
+  end)
+  c:show()
+  return pend
 end
 
 -- ------------------------------------------- render + visibility director --
@@ -375,17 +488,28 @@ local function tick()
   end
 
   -- Working bots: grey, left edge, vertically centered, always shown while
-  -- working, sliding in from the left and gently vibrating.
+  -- working, sliding in from the left and gently vibrating. A hovered bot holds
+  -- still (no vibration) so its tooltip stays put and the cursor doesn't slip.
   local wHiddenX = full.x - WORK_SIZE - 2
   for sid, p in pairs(M.working) do
     any = true
     local targetX = p.dying and wHiddenX or (f.x + WORK_MARGIN)
     p.curX = p.curX + (targetX - p.curX) * EASE
     p.curY = p.curY + (p.targetY - p.curY) * EASE
-    local vx = VIB_AMPL * math.sin(t * VIB_W + p.vibPhase)
-    local vy = VIB_AMPL * math.sin(t * VIB_W * 1.7 + p.vibPhase)
+    local vx, vy = 0, 0
+    if not p.hovered then
+      vx = VIB_AMPL * math.sin(t * VIB_W + p.vibPhase)
+      vy = VIB_AMPL * math.sin(t * VIB_W * 1.7 + p.vibPhase)
+    end
     p.canvas:topLeft({ x = p.curX + vx, y = p.curY + vy })
+    if M.tipOwner == p and M.tip then -- keep the pill glued if the column re-centers
+      M.tip:topLeft({ x = p.curX + WORK_SIZE + TIP_GAP, y = p.curY + (WORK_SIZE - TIP_H) / 2 })
+    end
     if p.dying and math.abs(p.curX - wHiddenX) < 1.0 then
+      if M.tipOwner == p then -- was being inspected as it slid away
+        hideTip()
+        M.tipOwner = nil
+      end
       p.canvas:delete()
       M.working[sid] = nil
     end
