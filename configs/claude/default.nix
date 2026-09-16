@@ -526,6 +526,34 @@ let
               ''
             ];
           };
+          # zepp-life (https://zepp.taptappers.club/mcp): Mi Band data served
+          # from a local archive in the homelab, not from Zepp's cloud. Remote
+          # HTTP bridged to stdio, same shape as the lyric entries above; the
+          # bearer is read from pass at launch so it never lands in .mcp.json:
+          #   pass insert api-keys/zepp-life/mcp-bearer
+          #
+          # Two DIFFERENT credentials are involved and confusing them is the
+          # easy mistake. This one authenticates *you to the endpoint*. The
+          # other, api-keys/zepp-life/apptoken, is the Zepp session cookie the
+          # cluster's nightly CronJob uses to fetch FROM Zepp -- it is a browser
+          # cookie and it expires. Both are mirrored in Bitwarden
+          # (zepp-life-mcp/bearer_token, zepp-life-mcp/apptoken), which is what
+          # the cluster Secret syncs from.
+          #
+          # The server runs read-only: it exposes queries and no sync_data, and
+          # every answer comes from local SQLite without touching the network.
+          # So a lapsed apptoken breaks the nightly sync and nothing here --
+          # queries keep working against whatever is already archived.
+          zepp-life = {
+            command = "bash";
+            args = [
+              "-c"
+              ''
+                exec npx -y mcp-remote@0.1.38 https://zepp.taptappers.club/mcp \
+                  --header "Authorization: Bearer $(pass show api-keys/zepp-life/mcp-bearer)"
+              ''
+            ];
+          };
         };
       }
       {
