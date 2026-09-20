@@ -328,6 +328,21 @@ let
     cleanupPeriodDays = 99999;
     alwaysThinkingEnabled = true;
 
+    # The flicker-free alt-screen renderer (mouse support, flat memory in long
+    # sessions). Unset, Claude Code picks per-machine from a table of feature
+    # flags and first-launch dates, and on festie it kept picking the classic
+    # renderer; the startup dialog that offers the switch has already burned all
+    # three of its offers there (~/.claude.json fullscreenUpsellSeenCount = 3),
+    # so it will never ask again.
+    #
+    # Set here rather than with `/tui fullscreen` for the same reason as
+    # autoMode.environment below: that command saves into ~/.claude/settings.json,
+    # which on festie is a read-only symlink into the Nix store, so the write
+    # fails and the next session is back to classic. Per-session escape hatches
+    # still win over this key: CLAUDE_CODE_NO_FLICKER=0 or
+    # CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 force the classic renderer back.
+    tui = "fullscreen";
+
     # Trust only the explicitly-listed project MCP servers rather than
     # auto-approving whatever a given <repo>/.mcp.json declares. The allowlist is
     # derived from the same inventory that writes the servers
