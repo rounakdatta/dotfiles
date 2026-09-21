@@ -466,15 +466,24 @@ let
           "mcp"
         ];
       };
+      # The Android device MCP (roundroid). Moved off the bare tailnet name
+      # `http://roundroid:8080` onto a public HTTPS host, because the tailnet
+      # name resolves nowhere on festie -- it has no tailscale and no tailnet
+      # interface, so this server timed out on every single session there.
+      # `--allow-http` goes with it; the new host is TLS behind Cloudflare.
+      #
+      # The bearer token is read from pass at launch and passed as a header, so
+      # it never lands in ~/.claude.json -- the same approach lyric-prototype
+      # below uses. Create it with:
+      #   pass insert api-keys/android-mcp
       android-remote-control = {
-        command = "npx";
+        command = "bash";
         args = [
-          "-y"
-          "mcp-remote@0.1.38"
-          "http://roundroid:8080/mcp"
-          "--allow-http"
-          "--header"
-          "Authorization: Bearer "
+          "-c"
+          ''
+            exec npx -y mcp-remote@0.1.38 https://roundroid.taptappers.club/mcp \
+              --header "Authorization: Bearer $(pass show api-keys/android-mcp)"
+          ''
         ];
       };
       google-maps = {
