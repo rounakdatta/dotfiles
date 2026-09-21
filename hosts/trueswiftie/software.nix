@@ -57,17 +57,62 @@ in
     # caskArgs.no_quarantine = true; # no quarantine is dead
     onActivation = {
       autoUpdate = true;
-      # uninstall: removes packages not listed in the config (without requiring Full Disk Access)
+      # Deliberately "none" — not because the uninstall behaviour stopped being
+      # wanted, but because it cannot be had at activation time on Homebrew 7 at
+      # all. The extraFlags note below carries the second half of the reason.
+      #
+      # The immediate half: Homebrew 7 removed the `--cleanup` switch outright,
+      # and says so:
+      #
+      #     Error: Calling the `--cleanup` switch is disabled! There is no replacement.
+      #
+      # The nix-darwin pinned here (2026-04-01) still emits it for
+      # cleanup = "uninstall", so activation aborts at the Homebrew phase before
+      # a single package is touched — and because autoUpdate runs first, a host
+      # that had been working breaks the moment brew updates itself past 7.0,
+      # with no commit to blame for it.
+      #
+      # Bumping the nix-darwin input does NOT make "uninstall" safe again, which
+      # is the trap worth spelling out: master emits `--force-cleanup` for it,
+      # and that flag trips the trust-store reset described below. Restoring
+      # declarative cleanup needs the *Brewfile* to declare tap trust, which
+      # neither Homebrew's `tap "..."` syntax nor nix-darwin offers today.
+      #
       # zap: more aggressive cleanup but requires Full Disk Access permissions
-      cleanup = "uninstall";
+      cleanup = "none";
       upgrade = true;
-      # --force-cleanup is required because Homebrew 4.x now refuses `brew bundle
-      # --cleanup` (which uninstalls casks/brews not in this file) unless an
-      # explicit force flag confirms the destructive cleanup. nix-darwin appends
-      # extraFlags to the bundle command, so this is the cleanest place for it.
-      # Without it, a fresh laptop (which bootstraps the newest brew) aborts
-      # activation with: `brew bundle install --cleanup` requires `--force` ...
-      extraFlags = [ "--verbose" "--force-cleanup" ];
+      # Deliberately NO --force-cleanup, which means no cleanup pass runs during
+      # activation at all. This is round three of the same fight, and the reason
+      # it ends here rather than in another flag swap:
+      #
+      #   - Homebrew 7 removed the `--cleanup` switch outright (note above).
+      #   - `--force-cleanup`, its replacement, does perform the uninstall pass,
+      #     but it also "resets Homebrew's global trust store to the trust values
+      #     declared by the Brewfile, removing trust entries not declared there"
+      #     (`brew bundle cleanup --help`) — and a plain `tap "..."` line does
+      #     NOT count as declaring trust.
+      #   - So it deletes the trust.json that extraActivation's `brew trust` loop
+      #     wrote minutes earlier, then runs a final `brew cleanup` that cannot
+      #     load casks from the now-untrusted taps, exits 1, and aborts
+      #     activation — with:
+      #
+      #         Error: Refusing to load cask rana-gmbh/netfluss/netfluss from
+      #         untrusted tap rana-gmbh/netfluss.
+      #
+      #     The uninstall has already happened by then, so Homebrew ends up
+      #     converged while the Nix half of the switch never lands at all. That
+      #     failure is silent in the worst way: `brew list` looks right, and the
+      #     dotfiles look unapplied, which points debugging in the wrong place.
+      #
+      # Cleanup is therefore a deliberate operation now, not an activation side
+      # effect. To converge Homebrew and keep the taps usable afterwards:
+      #
+      #     brew bundle cleanup --file=(readlink /run/current-system)/Brewfile --force
+      #     for t in (brew tap | grep -v '^homebrew/'); brew trust $t; end
+      #
+      # The re-trust is not optional — without it the *next* activation's bundle
+      # step cannot load the third-party taps either.
+      extraFlags = [ "--verbose" ];
     };
 
     # taps to open, let packages rain
