@@ -24,7 +24,13 @@ in
       set -g default-terminal "screen-256color"
       set -as terminal-overrides ',xterm*:Tc:sitm=\E[3m'
 
-      set-option -g default-shell /run/current-system/sw/bin/fish
+      # ${pkgs.fish} rather than /run/current-system/sw/bin/fish: that path is a
+      # NixOS (and nix-darwin) system profile, and festie is standalone
+      # home-manager with no system underneath it. tmux validates default-shell
+      # when the option is set, so on festie it rejected the value and printed
+      # "not a suitable shell" into the first pane of every fresh server. The
+      # store path is valid on all three hosts.
+      set-option -g default-shell ${pkgs.fish}/bin/fish
 
       # sensible yet memory-friendly scroll history
       set -g history-limit 20000
