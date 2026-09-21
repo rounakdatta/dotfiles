@@ -115,15 +115,37 @@ local function abbrevHome(p)
   return p
 end
 
+-- Character count, falling back to the byte length for a string that is not
+-- valid UTF-8 so callers always get a usable number rather than a nil.
+local function charCount(s)
+  return utf8.len(s) or #s
+end
+
 -- Keep the head and tail of an over-long string, eliding the middle — so both
 -- the window name (start) and the cwd leaf (end) survive.
+--
+-- Counts CHARACTERS, not bytes. The label always contains a "·" separator (2
+-- bytes), tmux window names carry emoji, and paths carry accents — cutting on a
+-- byte offset lands mid-character and emits an invalid sequence, which renders
+-- as a replacement glyph. Both boundaries are snapped to character starts via
+-- utf8.offset; the byte path is kept only for input that is already malformed.
 local function truncateMiddle(s, max)
-  if #s <= max then
+  local n = utf8.len(s)
+  if not n then -- not valid UTF-8 to begin with; nothing better than bytes
+    if #s <= max then
+      return s
+    end
+    local keep = max - 1
+    local head = math.ceil(keep / 2)
+    return s:sub(1, head) .. "…" .. s:sub(#s - (keep - head) + 1)
+  end
+  if n <= max then
     return s
   end
-  local keep = max - 1
+  local keep = max - 1 -- one character spent on the ellipsis
   local head = math.ceil(keep / 2)
-  return s:sub(1, head) .. "…" .. s:sub(#s - (keep - head) + 1)
+  local tail = keep - head
+  return s:sub(1, utf8.offset(s, head + 1) - 1) .. "…" .. s:sub(utf8.offset(s, n - tail + 1))
 end
 
 -- Human identity for a working session's tooltip: tmux window name (+ pane
@@ -293,7 +315,10 @@ end
 
 local function showTip(text, x, y)
   local c = ensureTip()
-  local w = math.floor(#text * TIP_FONT * MONO_RATIO) + 2 * TIP_PAD
+  -- charCount, not #text: the monospace advance is per rendered character, so
+  -- byte length overstates the width for anything non-ASCII — by 7px for the
+  -- "·" every label with a cwd carries, and by ~28px for an emoji window name.
+  local w = math.floor(charCount(text) * TIP_FONT * MONO_RATIO) + 2 * TIP_PAD
   c:frame({ x = x, y = y, w = w, h = TIP_H })
   c[1].frame = { x = 0, y = 0, w = w, h = TIP_H }
   c[2].frame = { x = TIP_PAD, y = (TIP_H - TIP_FONT) / 2 - 1, w = w - 2 * TIP_PAD, h = TIP_FONT + 4 }
@@ -484,6 +509,22 @@ local function tick()
     if p.dying and math.abs(p.curY - hiddenY) < 1.0 then
       p.canvas:delete()
       M.pendants[sid] = nil
+    end
+  end
+
+  -- A hovered bot is frozen and owns the pill, both of which are undone by
+  -- mouseExit — so a missed mouseExit strands it: permanently still, with a
+  -- stale pill beside it. AppKit does not reliably emit one when the canvas
+  -- moves out from under a stationary cursor, which is exactly what the column
+  -- re-centering does. Confirm the pointer each tick and self-heal if it left.
+  if M.tipOwner then
+    local p, m = M.tipOwner, hs.mouse.absolutePosition()
+    local slack = 2 -- do not fight a legitimate hover sitting on the boundary
+    if m.x < p.curX - slack or m.x > p.curX + WORK_SIZE + slack
+      or m.y < p.curY - slack or m.y > p.curY + WORK_SIZE + slack then
+      p.hovered = false
+      hideTip()
+      M.tipOwner = nil
     end
   end
 
