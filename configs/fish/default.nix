@@ -15,7 +15,10 @@ in
       set PATH $HOME/.npm-packages/bin $PATH
       set PATH $HOME/.cargo/bin $PATH
       set EDITOR nvim
-      set SHELL /run/current-system/sw/bin/fish
+      # Store path, not /run/current-system/sw/bin/fish -- that only exists
+      # where a NixOS or nix-darwin system profile does, so on festie every
+      # fish session had $SHELL pointing at a file that was not there.
+      set SHELL ${pkgs.fish}/bin/fish
       set XDG_DATA_HOME /run/current-system/sw/share/X11
 
       set NIXPKGS_ALLOW_UNFREE 1
