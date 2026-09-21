@@ -57,28 +57,26 @@ in
     # caskArgs.no_quarantine = true; # no quarantine is dead
     onActivation = {
       autoUpdate = true;
-      # Deliberately "none" even though the uninstall behaviour is still wanted.
+      # Deliberately "none" — not because the uninstall behaviour stopped being
+      # wanted, but because it cannot be had at activation time on Homebrew 7 at
+      # all. The extraFlags note below carries the second half of the reason.
       #
-      # This is round two of the same fight the extraFlags comment below used to
-      # describe. Homebrew 4.x merely *refused* `brew bundle --cleanup` without a
-      # force flag; Homebrew 7 removed the switch outright, and says so:
+      # The immediate half: Homebrew 7 removed the `--cleanup` switch outright,
+      # and says so:
       #
       #     Error: Calling the `--cleanup` switch is disabled! There is no replacement.
       #
-      # The nix-darwin pinned here (2026-04-01) still emits `--cleanup` for
+      # The nix-darwin pinned here (2026-04-01) still emits it for
       # cleanup = "uninstall", so activation aborts at the Homebrew phase before
       # a single package is touched — and because autoUpdate runs first, a host
-      # that had been working breaks the moment brew updates itself past 7.0.
+      # that had been working breaks the moment brew updates itself past 7.0,
+      # with no commit to blame for it.
       #
-      # Cleanup therefore lives entirely in --force-cleanup below, which Homebrew
-      # 7 still accepts on `brew bundle install` and which performs the same
-      # uninstall-what-is-not-declared pass. That reproduces exactly what
-      # nix-darwin master now generates for "uninstall":
-      #
-      #     brew bundle --file=... --force-cleanup
-      #
-      # When the nix-darwin input is bumped past that fix, set this back to
-      # "uninstall" and drop --force-cleanup from extraFlags, or it is passed twice.
+      # Bumping the nix-darwin input does NOT make "uninstall" safe again, which
+      # is the trap worth spelling out: master emits `--force-cleanup` for it,
+      # and that flag trips the trust-store reset described below. Restoring
+      # declarative cleanup needs the *Brewfile* to declare tap trust, which
+      # neither Homebrew's `tap "..."` syntax nor nix-darwin offers today.
       #
       # zap: more aggressive cleanup but requires Full Disk Access permissions
       cleanup = "none";
