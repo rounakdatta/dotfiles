@@ -503,6 +503,14 @@ let
       {
         path = "${homeDir}/personal";
         mcpServers = {
+          kite = {
+            command = "npx";
+            args = [
+              "-y"
+              "mcp-remote"
+              "https://mcp.kite.trade/mcp"
+            ];
+          };
           zomato = {
             command = "npx";
             args = [
