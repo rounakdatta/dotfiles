@@ -544,10 +544,23 @@ let
             ];
           };
           # zepp-life (https://zepp.taptappers.club/mcp): Mi Band data served
-          # from a local archive in the homelab, not from Zepp's cloud. Remote
-          # HTTP bridged to stdio, same shape as the lyric entries above; the
-          # bearer is read from pass at launch so it never lands in .mcp.json:
+          # from a local archive in the homelab, not from Zepp's cloud. Native
+          # HTTP, NOT the mcp-remote bridge the lyric entries use; the bearer is
+          # read from pass by headersHelper at connect time, so it still never
+          # lands in .mcp.json:
           #   pass insert api-keys/zepp-life/mcp-bearer
+          #
+          # Why not mcp-remote: from Claude Code 2.1.283 the client opens with a
+          # `server/discover` probe before `initialize`. This server (Python MCP
+          # SDK) rejects the probe with a 400 but still sets an mcp-session-id
+          # header on that error; mcp-remote adopts the id, sends `initialize`
+          # with it, gets a 404 "Session not found", and only logs it. Claude
+          # Code never hears back and gives up at the 30s connect timeout. The
+          # native transport connects to the same server in under a second.
+          #
+          # writeProjectLocalMcpServers below splices this JSON between single
+          # quotes, so headersHelper must not contain one -- hence printf with
+          # escaped double quotes.
           #
           # Two DIFFERENT credentials are involved and confusing them is the
           # easy mistake. This one authenticates *you to the endpoint*. The
@@ -562,14 +575,9 @@ let
           # So a lapsed apptoken breaks the nightly sync and nothing here --
           # queries keep working against whatever is already archived.
           zepp-life = {
-            command = "bash";
-            args = [
-              "-c"
-              ''
-                exec npx -y mcp-remote@0.1.38 https://zepp.taptappers.club/mcp \
-                  --header "Authorization: Bearer $(pass show api-keys/zepp-life/mcp-bearer)"
-              ''
-            ];
+            type = "http";
+            url = "https://zepp.taptappers.club/mcp";
+            headersHelper = ''printf "{\"Authorization\":\"Bearer %s\"}" "$(pass show api-keys/zepp-life/mcp-bearer)"'';
           };
         };
       }
