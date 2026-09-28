@@ -328,6 +328,20 @@ let
     cleanupPeriodDays = 99999;
     alwaysThinkingEnabled = true;
 
+    # Pinned to the classic main-screen renderer ("default"; the other value is
+    # "fullscreen"). Unset, Claude Code picks per machine: in 2.1.283, fullscreen
+    # on what it treats as a fresh install, otherwise whatever two server-side
+    # feature flags say, so a host can switch renderer with nothing changing
+    # here. Fullscreen made scrolling noticeably slow on festie, which is why
+    # #104's `tui = "fullscreen"` was reverted (73d3a5d); the revert left the
+    # choice to that same per-machine logic.
+    #
+    # Set here rather than with `/tui default` for the reason #104 gave: that
+    # command saves into ~/.claude/settings.json, which on festie is a read-only
+    # symlink into the Nix store. CLAUDE_CODE_NO_FLICKER=1 still wins over this
+    # key, so that is how to try fullscreen for a single session.
+    tui = "default";
+
     # Trust only the explicitly-listed project MCP servers rather than
     # auto-approving whatever a given <repo>/.mcp.json declares. The allowlist is
     # derived from the same inventory that writes the servers
