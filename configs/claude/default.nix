@@ -328,6 +328,20 @@ let
     cleanupPeriodDays = 99999;
     alwaysThinkingEnabled = true;
 
+    # Pinned to the classic main-screen renderer ("default"; the other value is
+    # "fullscreen"). Unset, Claude Code picks per machine: in 2.1.283, fullscreen
+    # on what it treats as a fresh install, otherwise whatever two server-side
+    # feature flags say, so a host can switch renderer with nothing changing
+    # here. Fullscreen made scrolling noticeably slow on festie, which is why
+    # #104's `tui = "fullscreen"` was reverted (73d3a5d); the revert left the
+    # choice to that same per-machine logic.
+    #
+    # Set here rather than with `/tui default` for the reason #104 gave: that
+    # command saves into ~/.claude/settings.json, which on festie is a read-only
+    # symlink into the Nix store. CLAUDE_CODE_NO_FLICKER=1 still wins over this
+    # key, so that is how to try fullscreen for a single session.
+    tui = "default";
+
     # Trust only the explicitly-listed project MCP servers rather than
     # auto-approving whatever a given <repo>/.mcp.json declares. The allowlist is
     # derived from the same inventory that writes the servers
@@ -443,6 +457,48 @@ let
     "claude-mem"
   ];
 
+  # Remote MCP servers connect over Claude Code's own HTTP transport
+  # (`type = "http"`), not through an `npx mcp-remote` stdio bridge. From
+  # Claude Code 2.1.283 the client opens with a `server/discover` probe before
+  # `initialize`. zepp-life's server (Python MCP SDK) rejects the probe with a
+  # 400 but still sets an mcp-session-id header on that error. Whenever that
+  # reply comes back before `initialize` has left the bridge, mcp-remote adopts
+  # the id, sends `initialize` with it, gets a 404 "Session not found", and only
+  # logs it, so Claude Code gives up at the 30s connect timeout. Being a race,
+  # it fails only some sessions. The native transport does not have this
+  # problem, and there is no npm download on session start.
+  #
+  # headersHelper for the servers that take a bearer token: prints
+  # {"Authorization":"Bearer <line 1 of a pass entry>"}. Claude Code runs it on
+  # every connect (session start and reconnect), so no token is ever written to
+  # ~/.claude.json or a .mcp.json.
+  #
+  # It exits non-zero rather than print an empty bearer. An inline
+  # `$(pass show ...)` would send `Bearer ` whenever the entry is missing or the
+  # agent can't decrypt; the server answers 401 and pass's error is lost (#109
+  # chased that same empty `Bearer ` from another cause). This way the MCP log
+  # says the headersHelper failed, and running it by hand prints pass's error.
+  #
+  # A store path plus one argument also keeps quotes out of the command, which
+  # matters: both activation scripts below splice the server JSON between
+  # single quotes.
+  mcpPassBearer = pkgs.writeShellApplication {
+    name = "mcp-pass-bearer";
+    runtimeInputs = with pkgs; [ gnused jq ];
+    text = ''
+      # Line 1 only: pass's convention for the secret, and ink-lyric keeps
+      # metadata on the lines after it. sed rather than head, which can close
+      # the pipe while pass is still writing and so trip pipefail.
+      token="$(pass show "$1" | sed -n 1p)"
+      if [ -z "$token" ]; then
+        echo "mcp-pass-bearer: the first line of $1 is empty" >&2
+        exit 1
+      fi
+      jq -cn --arg token "$token" '{Authorization: "Bearer \($token)"}'
+    '';
+  };
+  bearerFromPass = entry: "${mcpPassBearer}/bin/mcp-pass-bearer ${entry}";
+
   # Single MCP inventory for clarity:
   # - `global` -> merged into ~/.claude.json (user-level)
   # - `projectLocal` -> written into <path>/.mcp.json (directory-level)
@@ -470,21 +526,14 @@ let
       # `http://roundroid:8080` onto a public HTTPS host, because the tailnet
       # name resolves nowhere on festie -- it has no tailscale and no tailnet
       # interface, so this server timed out on every single session there.
-      # `--allow-http` goes with it; the new host is TLS behind Cloudflare.
+      # The new host is TLS behind Cloudflare.
       #
-      # The bearer token is read from pass at launch and passed as a header, so
-      # it never lands in ~/.claude.json -- the same approach lyric-prototype
-      # below uses. Create it with:
+      # Bearer token from pass (bearerFromPass above):
       #   pass insert api-keys/android-mcp
       android-remote-control = {
-        command = "bash";
-        args = [
-          "-c"
-          ''
-            exec npx -y mcp-remote@0.1.38 https://roundroid.taptappers.club/mcp \
-              --header "Authorization: Bearer $(pass show api-keys/android-mcp)"
-          ''
-        ];
+        type = "http";
+        url = "https://roundroid.taptappers.club/mcp";
+        headersHelper = bearerFromPass "api-keys/android-mcp";
       };
       google-maps = {
         command = "bash";
@@ -503,13 +552,18 @@ let
       {
         path = "${homeDir}/personal";
         mcpServers = {
+          # No auth on connect: each session signs in to Zerodha through the
+          # server's own `login` tool.
+          kite = {
+            type = "http";
+            url = "https://mcp.kite.trade/mcp";
+          };
+          # OAuth, run by Claude Code itself: sign in once from /mcp, or with
+          # `claude mcp login zomato` from ~/personal. Claude Code keeps and
+          # refreshes the token; none of it lands in .mcp.json.
           zomato = {
-            command = "npx";
-            args = [
-              "-y"
-              "mcp-remote"
-              "https://mcp-server.zomato.com/mcp"
-            ];
+            type = "http";
+            url = "https://mcp-server.zomato.com/mcp";
           };
           strava = {
             command = "bash";
@@ -536,9 +590,9 @@ let
             ];
           };
           # zepp-life (https://zepp.taptappers.club/mcp): Mi Band data served
-          # from a local archive in the homelab, not from Zepp's cloud. Remote
-          # HTTP bridged to stdio, same shape as the lyric entries above; the
-          # bearer is read from pass at launch so it never lands in .mcp.json:
+          # from a local archive in the homelab, not from Zepp's cloud. The
+          # server that first broke under mcp-remote (see bearerFromPass
+          # above). Bearer token:
           #   pass insert api-keys/zepp-life/mcp-bearer
           #
           # Two DIFFERENT credentials are involved and confusing them is the
@@ -554,14 +608,9 @@ let
           # So a lapsed apptoken breaks the nightly sync and nothing here --
           # queries keep working against whatever is already archived.
           zepp-life = {
-            command = "bash";
-            args = [
-              "-c"
-              ''
-                exec npx -y mcp-remote@0.1.38 https://zepp.taptappers.club/mcp \
-                  --header "Authorization: Bearer $(pass show api-keys/zepp-life/mcp-bearer)"
-              ''
-            ];
+            type = "http";
+            url = "https://zepp.taptappers.club/mcp";
+            headersHelper = bearerFromPass "api-keys/zepp-life/mcp-bearer";
           };
         };
       }
@@ -622,25 +671,16 @@ let
         "mcp"
       ];
     };
-    # Lyric Prototype platform (https://prototype.lyric.tech/mcp): a remote
-    # HTTP MCP server bridged to stdio via mcp-remote (like
-    # android-remote-control above). The scoped bearer key is read from
-    # pass at launch and passed as an Authorization header, so it never
-    # lands in .mcp.json — same approach as the grafana entries. Mint the
-    # key under Prototype > Developer Tools, then create the pass entry:
+    # Lyric Prototype platform (https://prototype.lyric.tech/mcp). The scoped
+    # bearer key comes from pass (bearerFromPass above). Mint it under
+    # Prototype > Developer Tools, then create the pass entry:
     #   pass insert api-keys/lyric-prototype
     lyric-prototype = {
-      command = "bash";
-      args = [
-        "-c"
-        ''
-          exec npx -y mcp-remote@0.1.38 https://prototype.lyric.tech/mcp \
-            --header "Authorization: Bearer $(pass show api-keys/lyric-prototype)"
-        ''
-      ];
+      type = "http";
+      url = "https://prototype.lyric.tech/mcp";
+      headersHelper = bearerFromPass "api-keys/lyric-prototype";
     };
-    # Ink (https://get.ink/mcp): an agent-facing infinite canvas. Remote HTTP
-    # MCP bridged to stdio via mcp-remote, same shape as lyric-prototype above.
+    # Ink (https://get.ink/mcp): an agent-facing infinite canvas.
     #
     # An Ink token is scoped to ONE board and grants write access to that board
     # and nothing else, so header auth means one server entry per board — hence
@@ -654,9 +694,9 @@ let
     #
     # The board id is NOT a secret, but it still has to reach a fresh session,
     # and the work/ CLAUDE.md files are not managed here — so it rides along as
-    # line 2 of the same entry. That is why this lookup takes `head -n1` where
-    # the single-line entries above do not: `pass show` prints the whole file,
-    # and the trailing metadata would otherwise land in the auth header.
+    # line 2 of the same entry. That is safe only because bearerFromPass sends
+    # line 1 alone: `pass show` prints the whole file, and the trailing
+    # metadata would otherwise land in the auth header.
     #
     # Two things the API will not tell you: a token is displayed only once, at
     # board creation, and an unclaimed board is deleted after 30 days. Both are
@@ -665,28 +705,17 @@ let
     # The REST API is CORS-open bearer auth and needs no local state, so this
     # entry is ergonomics — `curl` with the same pass lookup works without it.
     ink-lyric = {
-      command = "bash";
-      args = [
-        "-c"
-        ''
-          exec npx -y mcp-remote@0.1.38 https://get.ink/mcp \
-            --header "Authorization: Bearer $(pass show api-keys/getink/lyric | head -n1)"
-        ''
-      ];
+      type = "http";
+      url = "https://get.ink/mcp";
+      headersHelper = bearerFromPass "api-keys/getink/lyric";
     };
     # Lyric Support Tracker: every eng_support* Slack thread as a ticket. Read-only.
-    # Remote HTTP bridged to stdio, same shape as lyric-prototype above. The key is
-    # shown once, at https://tracker.lyric.tech/settings:
+    # The key is shown once, at https://tracker.lyric.tech/settings:
     #   pass insert api-keys/lyric/support-tracker
     support-tracker-lyric = {
-      command = "bash";
-      args = [
-        "-c"
-        ''
-          exec npx -y mcp-remote@0.1.38 https://tracker.lyric.tech/supportservice/mcp \
-            --header "Authorization: Bearer $(pass show api-keys/lyric/support-tracker)"
-        ''
-      ];
+      type = "http";
+      url = "https://tracker.lyric.tech/supportservice/mcp";
+      headersHelper = bearerFromPass "api-keys/lyric/support-tracker";
     };
   };
 in
