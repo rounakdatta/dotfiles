@@ -317,6 +317,11 @@ let
     "allowedTools" = "default";
   };
   codemanPermissionMode = config.programs.codeman.claudePermissionMode;
+
+  # A host where every session is launched by Codeman (festie). Several things
+  # that work from an interactive shell do not work there, and each still cost
+  # time on every call -- see where this is used below.
+  codemanHost = config.programs.codeman.enable;
   permissionDefaultMode =
     if config.programs.codeman.enable && codemanPermissionMode != null
     then codemanToClaudeMode.${codemanPermissionMode}
@@ -409,32 +414,38 @@ let
       "**Protected IaC scopes**: IAM, RBAC, networking, quota and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment"
     ];
 
-    statusLine = {
-      type = "command";
-      command = "bash -c 'basename $(dirname $(pwd))/$(basename $(pwd)); git branch --show-current 2>/dev/null | xargs -I{} echo \" ({})\" || true; echo -n \" | \"; npx ccusage@latest statusline' | tr -d '\\n'";
-    };
     env = {
       CLAUDE_CODE_EFFORT_LEVEL = "max";
     };
-    hooks = {
-      # Live session tracking (see claudeSessionTracker above). Every event upserts
-      # the per-session state file the desk-pet (configs/hammerspoon) reads.
+    # Empty event lists are dropped, so a host where none of these apply writes
+    # no hooks at all rather than a set of empty ones.
+    hooks = lib.filterAttrs (_: groups: groups != [ ]) {
+      # Live session tracking (see claudeSessionTracker above). Every event
+      # upserts the per-session state file the desk-pet (configs/hammerspoon)
+      # reads -- its ONLY consumer, and a macOS one. Anywhere else nothing reads
+      # ~/.cache/claude-sessions, and each run (~90 ms) sat on every prompt, turn
+      # end and notification for nothing, so these are darwin-only.
       #
       # PreToolUse on AskUserQuestion => "asking": Claude is blocked on a question,
       # the most urgent "needs you" signal (the bot bounces even in the focused
       # pane). PostToolUse clears it back to "working" once you've answered.
       # (Hooks for the built-in AskUserQuestion tool are undocumented but confirmed
       # to fire — verified live via ~/.cache/claude-sessions.)
-      PreToolUse = [{ matcher = "AskUserQuestion"; hooks = trackerHook; }];
-      UserPromptSubmit = [{ hooks = trackerHook; }];
-      Stop = [{ hooks = trackerHook; }];
-      Notification = [{ matcher = "idle_prompt"; hooks = trackerHook; }];
-      SessionStart = [{ hooks = trackerHook; }];
-      SessionEnd = [{ hooks = trackerHook; }];
+      PreToolUse = lib.optionals pkgs.stdenv.isDarwin [{ matcher = "AskUserQuestion"; hooks = trackerHook; }];
+      UserPromptSubmit = lib.optionals pkgs.stdenv.isDarwin [{ hooks = trackerHook; }];
+      Stop = lib.optionals pkgs.stdenv.isDarwin [{ hooks = trackerHook; }];
+      Notification = lib.optionals pkgs.stdenv.isDarwin [{ matcher = "idle_prompt"; hooks = trackerHook; }];
+      SessionStart = lib.optionals pkgs.stdenv.isDarwin [{ hooks = trackerHook; }];
+      SessionEnd = lib.optionals pkgs.stdenv.isDarwin [{ hooks = trackerHook; }];
 
-      PostToolUse = [
-        { matcher = "AskUserQuestion"; hooks = trackerHook; }
-        {
+      PostToolUse =
+        lib.optionals pkgs.stdenv.isDarwin [{ matcher = "AskUserQuestion"; hooks = trackerHook; }]
+          # bash-history: writes each Bash tool call into atuin. atuin refuses
+          # without $ATUIN_SESSION, which only its shell integration sets -- and a
+          # session Codeman launches never has it. On festie this failed on every
+          # single Bash call (atuin held 0 entries, ever) while costing ~200 ms a
+          # call, so it is left to hosts where Claude runs from a shell.
+          ++ lib.optionals (!codemanHost) [{
           matcher = "Bash";
           hooks = [
             {
@@ -442,8 +453,21 @@ let
               command = "bunx github:nitsanavni/bash-history-mcp#5243b0156580bbac7395066f5c79bfd54d16e654 hook";
             }
           ];
-        }
-      ];
+        }];
+    };
+  }
+  # A personal statusLine everywhere except under Codeman. Codeman wraps every
+  # session's statusline in its own exporter (~/.codeman/statusline-exporter.sh):
+  # with no user command it prints Codeman's stock line -- model, input/output
+  # tokens, context used -- from one localhost call. With this one set, festie
+  # ran `npx ccusage@latest` on every render instead: a full npm exec, a registry
+  # lookup, then a re-parse of every session log, in bursts of 5-6 overlapping
+  # ~3.7 s runs -- about 0.4 of a core, continuously, on the node every other
+  # workload shares.
+  // lib.optionalAttrs (!codemanHost) {
+    statusLine = {
+      type = "command";
+      command = "bash -c 'basename $(dirname $(pwd))/$(basename $(pwd)); git branch --show-current 2>/dev/null | xargs -I{} echo \" ({})\" || true; echo -n \" | \"; npx ccusage@latest statusline' | tr -d '\\n'";
     };
   };
 
@@ -503,49 +527,55 @@ let
   # - `global` -> merged into ~/.claude.json (user-level)
   # - `projectLocal` -> written into <path>/.mcp.json (directory-level)
   mcpInventory = {
-    global = {
-      # playwright = {
-      #   command = "npx";
-      #   args = [
-      #     "@playwright/mcp@latest"
-      #     "--extension"
-      #   ];
-      #   env = {
-      #     # I think this is ok to be pubic, it's local to my browser anyway
-      #     PLAYWRIGHT_MCP_EXTENSION_TOKEN = "7-yFGyEzSGhYDUCvdQXnZ0fzgEr0g2HuTyMhuWKgiLI";
-      #   };
-      # };
-      bash-history = {
-        command = "bunx";
-        args = [
-          "github:nitsanavni/bash-history-mcp#5243b0156580bbac7395066f5c79bfd54d16e654"
-          "mcp"
-        ];
+    global =
+      # The reader half of bash-history (its hook is above): nothing to read
+      # where the hook cannot write, and on festie it never connected anyway.
+      lib.optionalAttrs (!codemanHost)
+        {
+          bash-history = {
+            command = "bunx";
+            args = [
+              "github:nitsanavni/bash-history-mcp#5243b0156580bbac7395066f5c79bfd54d16e654"
+              "mcp"
+            ];
+          };
+        }
+      // {
+        # playwright = {
+        #   command = "npx";
+        #   args = [
+        #     "@playwright/mcp@latest"
+        #     "--extension"
+        #   ];
+        #   env = {
+        #     # I think this is ok to be pubic, it's local to my browser anyway
+        #     PLAYWRIGHT_MCP_EXTENSION_TOKEN = "7-yFGyEzSGhYDUCvdQXnZ0fzgEr0g2HuTyMhuWKgiLI";
+        #   };
+        # };
+        # The Android device MCP (roundroid). Moved off the bare tailnet name
+        # `http://roundroid:8080` onto a public HTTPS host, because the tailnet
+        # name resolves nowhere on festie -- it has no tailscale and no tailnet
+        # interface, so this server timed out on every single session there.
+        # The new host is TLS behind Cloudflare.
+        #
+        # Bearer token from pass (bearerFromPass above):
+        #   pass insert api-keys/android-mcp
+        android-remote-control = {
+          type = "http";
+          url = "https://roundroid.taptappers.club/mcp";
+          headersHelper = bearerFromPass "api-keys/android-mcp";
+        };
+        google-maps = {
+          command = "bash";
+          args = [
+            "-c"
+            ''
+              exec env GOOGLE_MAPS_API_KEY="$(pass show api-keys/google-maps)" \
+                npx -y --prefer-offline @cablate/mcp-google-map@0.0.55 --stdio
+            ''
+          ];
+        };
       };
-      # The Android device MCP (roundroid). Moved off the bare tailnet name
-      # `http://roundroid:8080` onto a public HTTPS host, because the tailnet
-      # name resolves nowhere on festie -- it has no tailscale and no tailnet
-      # interface, so this server timed out on every single session there.
-      # The new host is TLS behind Cloudflare.
-      #
-      # Bearer token from pass (bearerFromPass above):
-      #   pass insert api-keys/android-mcp
-      android-remote-control = {
-        type = "http";
-        url = "https://roundroid.taptappers.club/mcp";
-        headersHelper = bearerFromPass "api-keys/android-mcp";
-      };
-      google-maps = {
-        command = "bash";
-        args = [
-          "-c"
-          ''
-            exec env GOOGLE_MAPS_API_KEY="$(pass show api-keys/google-maps)" \
-              npx -y @cablate/mcp-google-map@0.0.55 --stdio
-          ''
-        ];
-      };
-    };
 
     projectLocal = [
       # Sample project-local MCP profile for ~/personal
@@ -575,7 +605,7 @@ let
                   STRAVA_CLIENT_SECRET="$(pass show api-keys/strava-client-secret)" \
                   STRAVA_ACCESS_TOKEN="$(pass show api-keys/strava-access-token)" \
                   STRAVA_REFRESH_TOKEN="$(pass show api-keys/strava-refresh-token)" \
-                  npx -y @r-huijts/strava-mcp-server@1.2.1
+                  npx -y --prefer-offline @r-huijts/strava-mcp-server@1.2.1
               ''
             ];
           };
@@ -585,7 +615,7 @@ let
               "-c"
               ''
                 exec env HEVY_API_KEY="$(pass show api-keys/hevy)" \
-                  npx -y hevy-mcp@6.1.4
+                  npx -y --prefer-offline hevy-mcp@6.1.4
               ''
             ];
           };
@@ -645,7 +675,7 @@ let
           GRAFANA_URL="https://notprod-grafana.lyric.tech"
           GRAFANA_SERVICE_ACCOUNT_TOKEN="$(pass show api-keys/notprod-grafana-lyric)"
 
-          exec uvx mcp-grafana \
+          exec uvx mcp-grafana@1.6.1 \
             -t stdio \
             -debug
         ''
@@ -659,7 +689,7 @@ let
           GRAFANA_URL="https://prod-grafana.lyric.tech/"
           GRAFANA_SERVICE_ACCOUNT_TOKEN="$(pass show api-keys/prod-grafana-lyric)"
 
-          exec uvx mcp-grafana \
+          exec uvx mcp-grafana@1.6.1 \
             -t stdio \
             -debug
         ''
