@@ -248,6 +248,66 @@
       };
     };
 
+    # Paseo is the UI of the agentfest computer, the Codeman successor built
+    # from this same profile. (festie itself stays on its pinned 0.1.x image,
+    # which never sees this.) Everything below is host-side state, which is
+    # what makes the phone and the desktop app start agents identically: both
+    # read it from the daemon.
+    paseo = {
+      enable = true;
+
+      settings = {
+        # Opus 5.5 at Max effort unless an agent says otherwise — the Paseo
+        # half of CLAUDE_CODE_EFFORT_LEVEL=max, which Paseo overrides with the
+        # agent's own thinking level. additionalModels updates Paseo's built-in
+        # entry in place (the context window and everything else not named here
+        # survive), but a model's thinkingOptions replace its list wholesale, so
+        # this is the full list Paseo 0.10.2 ships for Opus 5.5 with the
+        # default moved from Medium to Max. Re-check it when Paseo adds a level.
+        #
+        # The other half of "max + bypass" cannot be said in config: Paseo
+        # hardcodes Claude's default mode to Auto. agentfest's
+        # paseo.claudeDefaultMode chart value moves that default to Bypass.
+        agents.providers.claude.additionalModels = [
+          {
+            id = "claude-opus-5-5";
+            label = "Opus 5.5";
+            description = "Opus 5.5 · Latest release";
+            isDefault = true;
+            thinkingOptions = [
+              { id = "low"; label = "Low"; }
+              { id = "medium"; label = "Medium"; }
+              { id = "high"; label = "High"; }
+              { id = "xhigh"; label = "Extra High"; }
+              { id = "max"; label = "Max"; isDefault = true; }
+              { id = "ultracode"; label = "Ultra Code"; }
+            ];
+          }
+        ];
+
+        # One tap back to this machine's defaults after trying something else,
+        # and what an orchestrating agent reads before launching a worker.
+        daemon.agentProfiles = [
+          {
+            id = "claude-max-bypass";
+            name = "Claude · Max · Bypass";
+            provider = "claude";
+            model = "claude-opus-5-5";
+            modeId = "bypassPermissions";
+            thinkingOptionId = "max";
+            notes = "The default on this machine: Opus 5.5 at max effort with no permission prompts. Use for work that should run to completion unattended.";
+          }
+        ];
+      };
+
+      # The sidebar, in place of Codeman's cases. byoc is deliberately not a
+      # project here: it is not needed going forward.
+      projects = {
+        personal = "${config.home.homeDirectory}/personal";
+        work = "${config.home.homeDirectory}/work";
+      };
+    };
+
     # Asia/Kolkata, and the zoneinfo needed to mean it. festie has no NixOS layer
     # to carry `time.timeZone`, and no zoneinfo database at all, so until now
     # `date` answered in UTC for every TZ it was given -- silently. See the module.

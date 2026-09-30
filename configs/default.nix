@@ -14,6 +14,7 @@
     ./emacs
     ./claude
     ./codeman
+    ./paseo
     ./festie-doctor
     ./go
     ./cargo
