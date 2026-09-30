@@ -227,6 +227,7 @@ in
       "codex"
       "codex-app"
       "antigravity"
+      "paseo" # desktop + phone front-end for the Claude Code / Codex / OpenCode agents; links the paseo CLI too
       "cap"
       "temurin@21"
       "zulu@8" # native arm64 Java 8 for legacy Swing apps like the TDS RPU; temurin@8 is Intel-only
