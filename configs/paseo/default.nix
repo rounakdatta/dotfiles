@@ -18,12 +18,12 @@
 #                         a store symlink would turn every save from the app
 #                         into EROFS.
 #
-#   projects              Not config at all. Paseo keeps projects as records
-#                         under ~/.paseo/projects, created through its API, so
-#                         they are declared here as a list and applied by
-#                         `paseo-apply-declared` against the running daemon.
-#                         agentfest runs it after every daemon start; anywhere
-#                         else, run it by hand once the daemon is up.
+#   projects, schedules   Not config at all. Paseo keeps them as records
+#                         under ~/.paseo, created through its API, so they are
+#                         declared here and applied by `paseo-apply-declared`
+#                         against the running daemon (schedules matched by
+#                         name). agentfest runs it after every daemon start;
+#                         anywhere else, run it by hand once the daemon is up.
 #
 # Merge rules for lists: `daemon.agentProfiles` and every
 # `agents.providers.<id>.additionalModels` merge by `id` — declared entries
@@ -84,23 +84,60 @@ let
         echo "paseo-apply-declared: 'paseo reload' failed (is the daemon running?)" >&2
       fi
 
-      declared="${config.xdg.configHome}/paseo/projects.json"
-      [ -f "$declared" ] || exit 0
+      projects="${config.xdg.configHome}/paseo/projects.json"
+      if [ -f "$projects" ]; then
+        jq -r 'to_entries[] | "\(.key)\t\(.value)"' "$projects" |
+          while IFS=$'\t' read -r name path; do
+            mkdir -p "$path"
+            if ! out="$(paseo project create "$path" --json 2>&1)"; then
+              echo "paseo-apply-declared: could not register $name ($path): $out" >&2
+              continue
+            fi
+            id="$(printf '%s' "$out" | jq -r '.projectId')"
+            current="$(printf '%s' "$out" | jq -r '.name')"
+            if [ "$current" != "$name" ]; then
+              paseo project rename "$id" "$name" >/dev/null
+            fi
+            echo "project $name -> $path"
+          done
+      fi
 
-      jq -r 'to_entries[] | "\(.key)\t\(.value)"' "$declared" |
-        while IFS=$'\t' read -r name path; do
-          mkdir -p "$path"
-          if ! out="$(paseo project create "$path" --json 2>&1)"; then
-            echo "paseo-apply-declared: could not register $name ($path): $out" >&2
-            continue
-          fi
-          id="$(printf '%s' "$out" | jq -r '.projectId')"
-          current="$(printf '%s' "$out" | jq -r '.name')"
-          if [ "$current" != "$name" ]; then
-            paseo project rename "$id" "$name" >/dev/null
-          fi
-          echo "project $name -> $path"
-        done
+      # Schedules, matched by name: an existing one is updated in place, which
+      # keeps its id, history and run logs; a missing one is created. The
+      # thinking level applies only at creation, because `schedule update`
+      # cannot change it.
+      schedules="${config.xdg.configHome}/paseo/schedules.json"
+      if [ -f "$schedules" ]; then
+        existing="$(paseo schedule ls --json 2>/dev/null || echo '[]')"
+        jq -c 'to_entries[]' "$schedules" |
+          while IFS= read -r entry; do
+            field() { jq -r --arg f "$1" '.value[$f] // empty' <<<"$entry"; }
+            name="$(jq -r '.key' <<<"$entry")"
+            cwd="$(field cwd)"
+            args=(--cron "$(field cron)" --timezone "$(field timezone)" --cwd "$cwd")
+            provider="$(field provider)"
+            mode="$(field mode)"
+            [ -z "$provider" ] || args+=(--provider "$provider")
+            [ -z "$mode" ] || args+=(--mode "$mode")
+            mkdir -p "$cwd"
+            id="$(jq -r --arg n "$name" 'map(select(.name == $n)) | .[0].id // empty' <<<"$existing")"
+            if [ -n "$id" ]; then
+              if paseo schedule update "$id" "''${args[@]}" --prompt "$(field prompt)" >/dev/null 2>&1; then
+                echo "schedule $name updated"
+              else
+                echo "paseo-apply-declared: could not update schedule $name" >&2
+              fi
+            else
+              thinking="$(field thinking)"
+              [ -z "$thinking" ] || args+=(--thinking "$thinking")
+              if paseo schedule create --name "$name" "''${args[@]}" "$(field prompt)" >/dev/null 2>&1; then
+                echo "schedule $name created"
+              else
+                echo "paseo-apply-declared: could not create schedule $name" >&2
+              fi
+            fi
+          done
+      fi
     '';
   };
 in
@@ -143,12 +180,57 @@ in
         `paseo-apply-declared`, which needs the daemon running.
       '';
     };
+
+    schedules = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule {
+        options = {
+          cron = lib.mkOption {
+            type = lib.types.str;
+            example = "0 1,9,17 * * *";
+            description = "Cron expression, evaluated in `timezone`.";
+          };
+          timezone = lib.mkOption {
+            type = lib.types.str;
+            default = "UTC";
+            description = "IANA zone for `cron`. Paseo defaults to UTC, not the machine's zone.";
+          };
+          cwd = lib.mkOption {
+            type = lib.types.str;
+            description = "Where each run's fresh agent starts; skills and MCP servers load from here.";
+          };
+          prompt = lib.mkOption { type = lib.types.str; };
+          provider = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "claude/claude-opus-5-5";
+          };
+          mode = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "bypassPermissions";
+          };
+          thinking = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "max";
+            description = "Thinking level, applied when the schedule is first created.";
+          };
+        };
+      });
+      default = { };
+      description = ''
+        Name -> schedule. Each run starts a fresh agent with `prompt` in `cwd`
+        and archives it when done — Codeman's cron with
+        autoClosePreviousSession. Applied by `paseo-apply-declared`.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
     home.packages = [ applyDeclared ];
 
     xdg.configFile."paseo/projects.json".text = builtins.toJSON cfg.projects;
+    xdg.configFile."paseo/schedules.json".text = builtins.toJSON cfg.schedules;
 
     home.activation.paseoConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       (

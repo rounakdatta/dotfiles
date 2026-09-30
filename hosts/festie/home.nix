@@ -207,6 +207,11 @@
     # verified against exactly this version.
     npm-packages.packages = [
       "agent-browser@0.37.0"
+      # The Bitwarden CLI, for the homelab secrets work (the
+      # create-missing-bitwarden-secrets-manually skill logs in with the API key
+      # kept in pass). festie had it only as a hand install in ~/.npm-global,
+      # which is exactly what a rebuilt machine does not get back.
+      "@bitwarden/cli@2026.6.0"
     ];
 
     # Codeman is this machine's UI, and the cases it offers are the working
@@ -305,6 +310,37 @@
       projects = {
         personal = "${config.home.homeDirectory}/personal";
         work = "${config.home.homeDirectory}/work";
+      };
+
+      # Codeman's one cron job, carried over. It ran every 600 minutes; cron
+      # cannot say that evenly, so it is every 8 hours instead, keeping the
+      # 01:00 run the prompt mentions. Each run only refreshes what has expired,
+      # so an extra run costs nothing. It starts in ~/work, where the skill is
+      # installed (agent-smith roots = ~/work), not in byoc.
+      schedules.lyric-mic-doctor-refresh = {
+        cron = "0 1,9,17 * * *";
+        timezone = "Asia/Kolkata";
+        cwd = "${config.home.homeDirectory}/work";
+        provider = "claude/claude-opus-5-5";
+        mode = "bypassPermissions";
+        thinking = "max";
+        prompt = builtins.concatStringsSep " " [
+          "Use the lyric-automate-mic-doctor-refresh skill."
+          "Run scripts/cloud-auth-status.sh first and refresh ONLY what it reports expired."
+          "Leave healthy providers alone."
+          "Do AWS before GCP: AWS needs no 2FA while the profile's Google session is live,"
+          "so it is the part that can finish unattended."
+          "Some runs fire while I am asleep (01:00)."
+          "If a step needs me — a 2FA code, a captcha, or a locked GPG keyring"
+          "(ask me to run festie-unlock in a Paseo terminal) — ask once, plainly,"
+          "naming which app the code is from."
+          "If I do not reply, do not wait or retry in a loop: finish whatever else you can,"
+          "then exit and say what was left."
+          "At 2FA prefer \"Try another way\" -> Google Authenticator over the phone-tap prompt;"
+          "the tap number rotates and I may reply late."
+          "Never set MIC_AUTH_HEADLESS."
+          "Finish with the status check, report before/after."
+        ];
       };
     };
 
