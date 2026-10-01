@@ -30,6 +30,13 @@
 # replace their namesakes and come first, and anything created in the app
 # survives. Every other value is replaced wholesale, as jq's `*` does.
 #
+# Plugins are config too: each declared one becomes a `plugins.<id>` directory
+# source pointing at its npm package, unpacked in the store. Paseo compiles a
+# plugin in memory at start and serves its client half to every connected app,
+# so a plugin installed here appears on the phone and the desktop with nothing
+# to do on either. A plugin dropped from the list loses its entry at the next
+# activation; one installed by hand (`paseo plugin add`) is left alone.
+#
 # Nothing here validates the result: the daemon does, at start. An invalid
 # key stops Paseo from starting, so try a settings change against a scratch
 # daemon (`PASEO_HOME=$(mktemp -d) paseo daemon run`) before shipping it.
@@ -38,7 +45,36 @@ let
   cfg = config.programs.paseo;
   paseoHome = "${config.home.homeDirectory}/.paseo";
   configFile = "${paseoHome}/config.json";
-  declaredSettings = { version = 1; } // cfg.settings;
+
+  # The registry tarball, checked against npm's own integrity hash, so the
+  # bytes are the ones `npm install` would accept. A plugin's dependencies
+  # are not fetched: Paseo provides the SDK, React and zod to the plugins it
+  # compiles, and a plugin that needs more is not one this can install.
+  pluginPackage = id: plugin:
+    let
+      tarball = pkgs.fetchurl {
+        url = "https://registry.npmjs.org/${plugin.npm}/-/${baseNameOf plugin.npm}-${plugin.version}.tgz";
+        hash = plugin.integrity;
+      };
+    in
+    pkgs.runCommand "paseo-plugin-${id}-${plugin.version}" { } ''
+      mkdir -p $out
+      tar -xzf ${tarball} -C $out --strip-components=1
+    '';
+
+  declaredPlugins = lib.mapAttrs
+    (id: plugin: {
+      source = "directory";
+      path = "${pluginPackage id plugin}";
+      enabled = plugin.enable;
+    })
+    cfg.plugins;
+
+  declaredSettings = lib.recursiveUpdate ({ version = 1; } // cfg.settings)
+    (lib.optionalAttrs (cfg.plugins != { }) {
+      pluginsEnabled = true;
+      plugins = declaredPlugins;
+    });
 
   # Both go through store files rather than being spliced into the activation
   # script, so that no quote in a profile's notes can end a shell string early.
@@ -62,6 +98,13 @@ let
         .agents.providers[$provider.key].additionalModels =
           merge_by_id(($current.agents.providers[$provider.key].additionalModels // []);
                       $provider.value.additionalModels))
+    # An entry this module wrote, a store path named paseo-plugin-*, goes when
+    # its plugin is no longer declared; the path would not outlive a GC anyway.
+    | if (.plugins? != null) then
+        .plugins |= with_entries(select(
+          ((.value.path? // "") | test("^/nix/store/[^/]+-paseo-plugin-") | not)
+          or ($declared.plugins[.key]? != null)))
+      else . end
   '';
 
   applyDeclared = pkgs.writeShellApplication {
@@ -224,10 +267,48 @@ in
         autoClosePreviousSession. Applied by `paseo-apply-declared`.
       '';
     };
+
+    plugins = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule {
+        options = {
+          npm = lib.mkOption {
+            type = lib.types.str;
+            example = "@omercnet/paseo-pr-radar";
+            description = "The npm package the plugin is published as.";
+          };
+          version = lib.mkOption {
+            type = lib.types.str;
+            example = "1.0.1";
+          };
+          integrity = lib.mkOption {
+            type = lib.types.str;
+            example = "sha512-qY76jnjreXWeVzL+…";
+            description = "The registry's hash for that version: `npm view <npm>@<version> dist.integrity`.";
+          };
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            default = true;
+          };
+          packages = lib.mkOption {
+            type = lib.types.listOf lib.types.package;
+            default = [ ];
+            description = "Commands the plugin's server code runs, put on the daemon's PATH.";
+          };
+        };
+      });
+      default = { };
+      description = ''
+        Plugin id (the `id` in its paseo-plugin.json) -> npm package, loaded by
+        the daemon at start and shown in every client. Plugins are trusted,
+        unsandboxed code that runs as this user: read a version before pinning
+        it, and the diff before bumping it.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ applyDeclared ];
+    home.packages = [ applyDeclared ]
+      ++ lib.concatMap (plugin: plugin.packages) (builtins.attrValues cfg.plugins);
 
     xdg.configFile."paseo/projects.json".text = builtins.toJSON cfg.projects;
     xdg.configFile."paseo/schedules.json".text = builtins.toJSON cfg.schedules;
