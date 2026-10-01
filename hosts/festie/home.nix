@@ -1,4 +1,27 @@
-{ config, pkgs, user, ... }: {
+{ config, pkgs, user, ... }:
+
+let
+  # Beads (`bd`) for the paseo-beads plugin below, which needs 1.0 or newer;
+  # the nixpkgs pinned here has 0.42. This is the upstream release binary,
+  # which is linked against /lib64/ld-linux-x86-64.so.2, so it is patched to
+  # Nix's glibc rather than trusting the image to carry that path.
+  beads = pkgs.stdenv.mkDerivation rec {
+    pname = "beads";
+    version = "1.3.1";
+    src = pkgs.fetchurl {
+      url = "https://github.com/gastownhall/beads/releases/download/v${version}/beads_${version}_linux_amd64.tar.gz";
+      hash = "sha256-MhlEOpc0uJuT+xbujWWER1n6GzzTzxOcYGtzU8+wcVw=";
+    };
+    sourceRoot = ".";
+    nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+    installPhase = ''
+      runHook preInstall
+      install -Dm755 bd $out/bin/bd
+      runHook postInstall
+    '';
+  };
+in
+{
 
   imports = [
     ../../configs
@@ -341,6 +364,28 @@
           "Never set MIC_AUTH_HEADLESS."
           "Finish with the status check, report before/after."
         ];
+      };
+
+      # Third-party code (omercnet, MIT) that runs unsandboxed as this user, so
+      # pinned to versions whose server code was read: both only read, through
+      # the CLIs named below.
+      plugins = {
+        # Open pull requests you wrote or were asked to review, sorted by who
+        # has to act next. Runs `gh search prs`, `gh api user` and one GraphQL
+        # query, with the gh login already on PATH.
+        pr-radar = {
+          npm = "@omercnet/paseo-pr-radar";
+          version = "1.0.1";
+          integrity = "sha512-qY76jnjreXWeVzL+eC80uEzp/kEv2razdVtyzfSSKusgsLpvp3Tpw2X57lMWh2abPgxtoT0syxQuRu/t5tVN6w==";
+        };
+        # Each workspace's Beads queue, through `bd --readonly`. Empty until a
+        # repo has a Beads project (`bd init`).
+        paseo-beads = {
+          npm = "@omercnet/paseo-beads";
+          version = "1.0.1";
+          integrity = "sha512-Isw8bnifT2nHYBeg80O5FCkL01ORxZTbuaLmQma0qbWGfKhriSq1R6xZQBPCDVJkgI7I2Dez9Z+wjs6ZjEGmmQ==";
+          packages = [ beads ];
+        };
       };
     };
 
