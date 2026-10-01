@@ -565,16 +565,6 @@ let
           url = "https://roundroid.taptappers.club/mcp";
           headersHelper = bearerFromPass "api-keys/android-mcp";
         };
-        google-maps = {
-          command = "bash";
-          args = [
-            "-c"
-            ''
-              exec env GOOGLE_MAPS_API_KEY="$(pass show api-keys/google-maps)" \
-                npx -y --prefer-offline @cablate/mcp-google-map@0.0.55 --stdio
-            ''
-          ];
-        };
       };
 
     projectLocal = [
