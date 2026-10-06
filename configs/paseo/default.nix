@@ -37,6 +37,13 @@
 # to do on either. A plugin dropped from the list loses its entry at the next
 # activation; one installed by hand (`paseo plugin add`) is left alone.
 #
+# Beads, for the paseo-beads plugin and for agents: one tracker per declared
+# project. Its database lives in ~/.local/share/beads/<project>, behind one
+# shared Dolt server, and the project folder holds only `.beads/redirect`, so
+# ~/personal and ~/work never become git repositories. The `bd` on PATH finds
+# a project's tracker from anywhere below it, repos included, and restarts the
+# server whenever a call finds it down (after every pod restart, at least).
+#
 # Nothing here validates the result: the daemon does, at start. An invalid
 # key stops Paseo from starting, so try a settings change against a scratch
 # daemon (`PASEO_HOME=$(mktemp -d) paseo daemon run`) before shipping it.
@@ -106,6 +113,113 @@ let
           or ($declared.plugins[.key]? != null)))
       else . end
   '';
+
+  beadsData = "${config.home.homeDirectory}/.local/share/beads";
+
+  # bd as everything here calls it, with three fixes:
+  #   - bd stops looking for a tracker at a git repository's root, so from
+  #     inside a repo in ~/personal it would never find the personal tracker.
+  #     A call about a path in a declared project names that project's
+  #     tracker outright (BEADS_DIR), unless a .beads of its own sits closer;
+  #   - in shared-server mode a read finds a stopped Dolt server unreachable
+  #     rather than starting it, and the server dies with the pod. A call that
+  #     fails that way starts it (`bd dolt start` is idempotent and serialised
+  #     by bd's own lock) and runs once more. A terminal gets bd itself, so its
+  #     errors stream and its prompts work;
+  #   - DO_NOT_TRACK: bd otherwise queues a usage event for DoltHub per call,
+  #     one per agent command and two per panel refresh.
+  beadsProjectCases = lib.concatStringsSep "\n" (lib.mapAttrsToList
+    (name: path: "${lib.escapeShellArg path}) export BEADS_DIR=${lib.escapeShellArg "${beadsData}/${name}/.beads"}; break ;;")
+    cfg.projects);
+
+  bd = pkgs.writeShellApplication {
+    name = "bd";
+    runtimeInputs = [ pkgs.coreutils pkgs.gnugrep ];
+    text = ''
+      export DO_NOT_TRACK=1
+      export PATH="${pkgs.dolt}/bin:$PATH"
+      real=${cfg.beads.package}/bin/bd
+
+      # The directory this call is about: -C's, or the working directory.
+      dir=()
+      target="$PWD"
+      prev=""
+      for arg in "$@"; do
+        case "$prev" in -C | --directory) dir=(-C "$arg") && target="$arg" ;; esac
+        case "$arg" in --directory=*) dir=(-C "''${arg#--directory=}") && target="''${arg#--directory=}" ;; esac
+        prev="$arg"
+      done
+      case "$target" in /*) ;; *) target="$PWD/$target" ;; esac
+
+      if [ -z "''${BEADS_DIR:-}" ]; then
+        d="$target"
+        while :; do
+          case "$d" in
+            ${beadsProjectCases}
+          esac
+          if [ -d "$d/.beads" ] || [ "$d" = / ]; then break; fi
+          d="$(dirname "$d")"
+        done
+      fi
+
+      if [ -t 0 ] || [ -t 2 ]; then exec "$real" "$@"; fi
+
+      err="$(mktemp)"
+      trap 'rm -f "$err"' EXIT
+      rc=0
+      "$real" "$@" 2>"$err" || rc=$?
+      if [ "$rc" -ne 0 ] && grep -q 'Dolt server unreachable' "$err" \
+        && "$real" "''${dir[@]}" dolt start >/dev/null 2>&1; then
+        rm -f "$err"
+        exec "$real" "$@"
+      fi
+      cat "$err" >&2
+      exit "$rc"
+    '';
+  };
+
+  # One tracker per declared project, created once, then the shared server
+  # started. Run detached by paseo-apply-declared after every daemon start: a
+  # first `bd init` can take minutes on a busy node.
+  beadsEnsure = pkgs.writeShellApplication {
+    name = "paseo-beads-ensure";
+    runtimeInputs = [ bd pkgs.git pkgs.jq pkgs.coreutils ];
+    text = ''
+      # Dolt's own usage events, for the server it runs.
+      mkdir -p "$HOME/.dolt"
+      dolt_config="$HOME/.dolt/config_global.json"
+      [ -s "$dolt_config" ] || echo '{}' > "$dolt_config"
+      jq '. + {"metrics.disabled": "true"}' "$dolt_config" > "$dolt_config.tmp" \
+        && mv "$dolt_config.tmp" "$dolt_config"
+
+      jq -r 'to_entries[] | "\(.key)\t\(.value)"' "${config.xdg.configHome}/paseo/projects.json" |
+        while IFS=$'\t' read -r name path; do
+          data="${beadsData}/$name"
+          if [ ! -d "$data/.beads" ]; then
+            # bd init commits its files: to a repository of its own here, and
+            # unsigned, since a fresh pod's GPG key is locked.
+            mkdir -p "$data"
+            git -C "$data" init -q
+            git -C "$data" config commit.gpgsign false
+            if ! (cd "$data" && bd init --shared-server --non-interactive --skip-agents --skip-hooks --prefix "$name" >/dev/null); then
+              echo "paseo-beads-ensure: could not create the $name tracker" >&2
+              continue
+            fi
+            echo "$name: tracker created"
+          fi
+          mkdir -p "$path/.beads"
+          if [ "$(cat "$path/.beads/redirect" 2>/dev/null)" != "$data/.beads" ]; then
+            printf '%s\n' "$data/.beads" > "$path/.beads/redirect"
+          fi
+          bd -C "$data" dolt start >/dev/null 2>&1 || true
+          if bd --readonly -C "$path" list --json >/dev/null 2>&1; then
+            echo "$name: ready"
+          else
+            echo "paseo-beads-ensure: the $name tracker does not open (try bd doctor in $data)" >&2
+          fi
+        done
+    '';
+  };
 
   applyDeclared = pkgs.writeShellApplication {
     name = "paseo-apply-declared";
@@ -181,6 +295,13 @@ let
             fi
           done
       fi
+    '' + lib.optionalString cfg.beads.enable ''
+
+      # Beads trackers, in a session of their own so that a slow first init
+      # outlives this script's caller; the lock keeps restarts from stacking.
+      mkdir -p "$HOME/.local/state"
+      ${pkgs.util-linux}/bin/setsid -f ${pkgs.util-linux}/bin/flock -n "$HOME/.local/state/paseo-beads.lock" \
+        ${beadsEnsure}/bin/paseo-beads-ensure >>"$HOME/.local/state/paseo-beads.log" 2>&1 || true
     '';
   };
 in
@@ -304,11 +425,25 @@ in
         it, and the diff before bumping it.
       '';
     };
+
+    beads = {
+      enable = lib.mkEnableOption ''
+        a Beads tracker for every declared project, with `bd` on PATH: what the
+        paseo-beads plugin shows, and what agents file work in'';
+      package = lib.mkOption {
+        type = lib.types.package;
+        description = "Beads 1.0 or newer, providing bin/bd. It is wrapped here (see `bd` above).";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
     home.packages = [ applyDeclared ]
-      ++ lib.concatMap (plugin: plugin.packages) (builtins.attrValues cfg.plugins);
+      ++ lib.concatMap (plugin: plugin.packages) (builtins.attrValues cfg.plugins)
+      ++ lib.optional cfg.beads.enable bd;
+
+    # The trackers belong to their owner; unset, bd warns on every call.
+    programs.git.settings.beads.role = lib.mkIf cfg.beads.enable "maintainer";
 
     xdg.configFile."paseo/projects.json".text = builtins.toJSON cfg.projects;
     xdg.configFile."paseo/schedules.json".text = builtins.toJSON cfg.schedules;

@@ -1,7 +1,7 @@
 { config, pkgs, user, ... }:
 
 let
-  # Beads (`bd`) for the paseo-beads plugin below, which needs 1.0 or newer;
+  # Beads (`bd`) for programs.paseo.beads below, since paseo-beads needs 1.0 or newer;
   # the nixpkgs pinned here has 0.42. This is the upstream release binary,
   # which is linked against /lib64/ld-linux-x86-64.so.2, so it is patched to
   # Nix's glibc rather than trusting the image to carry that path.
@@ -378,14 +378,19 @@ in
           version = "1.0.1";
           integrity = "sha512-qY76jnjreXWeVzL+eC80uEzp/kEv2razdVtyzfSSKusgsLpvp3Tpw2X57lMWh2abPgxtoT0syxQuRu/t5tVN6w==";
         };
-        # Each workspace's Beads queue, through `bd --readonly`. Empty until a
-        # repo has a Beads project (`bd init`).
+        # Each workspace's Beads queue, through `bd --readonly`, from the
+        # trackers declared in `beads` below.
         paseo-beads = {
           npm = "@omercnet/paseo-beads";
           version = "1.0.1";
           integrity = "sha512-Isw8bnifT2nHYBeg80O5FCkL01ORxZTbuaLmQma0qbWGfKhriSq1R6xZQBPCDVJkgI7I2Dez9Z+wjs6ZjEGmmQ==";
-          packages = [ beads ];
         };
+      };
+
+      # A tracker for each project above (personal, work), kept outside them.
+      beads = {
+        enable = true;
+        package = beads;
       };
     };
 
