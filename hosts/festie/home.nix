@@ -1,16 +1,17 @@
 { config, pkgs, user, ... }:
 
 let
-  # Beads (`bd`) for programs.paseo.beads below, since paseo-beads needs 1.0 or newer;
-  # the nixpkgs pinned here has 0.42. This is the upstream release binary,
-  # which is linked against /lib64/ld-linux-x86-64.so.2, so it is patched to
-  # Nix's glibc rather than trusting the image to carry that path.
+  # Beads (`bd`) for programs.paseo.beads below, at 1.3.3 or newer: earlier
+  # releases let a cloned repo's committed `.beads/.env` or remote URL run a
+  # command, and the nixpkgs pinned here has 1.3.2. This is the upstream
+  # release binary, which is linked against /lib64/ld-linux-x86-64.so.2, so it
+  # is patched to Nix's glibc rather than trusting the image to carry that path.
   beads = pkgs.stdenv.mkDerivation rec {
     pname = "beads";
-    version = "1.3.1";
+    version = "1.3.4";
     src = pkgs.fetchurl {
       url = "https://github.com/gastownhall/beads/releases/download/v${version}/beads_${version}_linux_amd64.tar.gz";
-      hash = "sha256-MhlEOpc0uJuT+xbujWWER1n6GzzTzxOcYGtzU8+wcVw=";
+      hash = "sha256-F1wmkEveP/kWjSKC/2tW8XsX9gwi+lrLPazJ+zRlMDo=";
     };
     sourceRoot = ".";
     nativeBuildInputs = [ pkgs.autoPatchelfHook ];
@@ -375,15 +376,15 @@ in
         # query, with the gh login already on PATH.
         pr-radar = {
           npm = "@omercnet/paseo-pr-radar";
-          version = "1.0.1";
-          integrity = "sha512-qY76jnjreXWeVzL+eC80uEzp/kEv2razdVtyzfSSKusgsLpvp3Tpw2X57lMWh2abPgxtoT0syxQuRu/t5tVN6w==";
+          version = "3.2.1";
+          integrity = "sha512-Z7H8IRZrr6SHlLmSL3Gjh4xrXxI+U42vRJMKbWuN6dfk4eRbSHjU2ppWuWwl9ArrhWjSRepBsrkPQuC8oL+SXA==";
         };
         # Each workspace's Beads queue, through `bd --readonly`, from the
         # trackers declared in `beads` below.
         paseo-beads = {
           npm = "@omercnet/paseo-beads";
-          version = "1.0.1";
-          integrity = "sha512-Isw8bnifT2nHYBeg80O5FCkL01ORxZTbuaLmQma0qbWGfKhriSq1R6xZQBPCDVJkgI7I2Dez9Z+wjs6ZjEGmmQ==";
+          version = "3.1.1";
+          integrity = "sha512-TN8gJI42m+vl0grzMX9JcnCT/o6sHmgCngpPxtNOXAgd4iGcGJ1d/57ZEPw2U4yzYOOPFeJNwC6B9tDWAb/Xrw==";
         };
       };
 
