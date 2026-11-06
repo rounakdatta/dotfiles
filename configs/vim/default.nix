@@ -9,6 +9,8 @@
           name = "copilot.lua";
           src = inputs.copilot-lua;
         };
+        # Vimscript wrapping a Lua heredoc; home-manager now defaults to "lua".
+        type = "viml";
         config = ''
           lua << EOF
           require('copilot').setup({

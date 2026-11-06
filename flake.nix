@@ -95,6 +95,28 @@
           pkgs = import nixpkgs {
             system = "x86_64-linux";
             config.allowUnfree = true;
+            # invoke 3 left fabric marked broken, and azure-cli depends on it.
+            # This is upstream's fix (NixOS/nixpkgs@746881f6f066), which is
+            # not on nixos-unstable yet. Delete it once the pin carries it.
+            overlays = [
+              (final: prev: {
+                pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+                  (pyfinal: pyprev: {
+                    fabric = pyprev.fabric.overridePythonAttrs (old: {
+                      patches = (old.patches or [ ]) ++ [
+                        (final.fetchpatch {
+                          name = "invoke-3-support.patch";
+                          url = "https://github.com/fabric/fabric/commit/7fa309db9dd5dac69079c1fb83b6f579555f7d53.patch";
+                          hash = "sha256-HxdV1XbsytBYOHV8WqcpKMpqGRkbXD/UlmAFSrmsFTg=";
+                        })
+                      ];
+                      pythonRelaxDeps = [ "invoke" ];
+                      meta = old.meta // { broken = false; };
+                    });
+                  })
+                ];
+              })
+            ];
           };
           extraSpecialArgs = { inherit user inputs self; };
           modules = [ ./hosts/festie/home.nix ];
