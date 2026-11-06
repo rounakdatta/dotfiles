@@ -235,7 +235,7 @@ in
       # create-missing-bitwarden-secrets-manually skill logs in with the API key
       # kept in pass). festie had it only as a hand install in ~/.npm-global,
       # which is exactly what a rebuilt machine does not get back.
-      "@bitwarden/cli@2026.6.0"
+      "@bitwarden/cli@2026.10.1"
     ];
 
     # Codeman is this machine's UI, and the cases it offers are the working

@@ -68,8 +68,8 @@
       # getting currently playing media information
       # playerctl
 
-      # npm global packages (adhere to the prefix structure)
-      nodePackages.bitwarden-cli
+      # nixpkgs removed nodePackages; the CLI is a top-level package now
+      bitwarden-cli
     ];
   };
 
