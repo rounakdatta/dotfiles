@@ -2,6 +2,11 @@
   programs.neovim = {
     enable = true;
     vimAlias = true;
+    # Explicit because home-manager now derives these defaults from
+    # home.stateVersion, and 23.05's would switch the Ruby provider back on,
+    # pulling Ruby into every closure, the agentfest image's included.
+    withRuby = false;
+    withPython3 = true;
 
     plugins = with pkgs.vimPlugins; [
       {
@@ -9,7 +14,8 @@
           name = "copilot.lua";
           src = inputs.copilot-lua;
         };
-        # Vimscript wrapping a Lua heredoc; home-manager now defaults to "lua".
+        # Vimscript wrapping a Lua heredoc. Explicit because the default now
+        # depends on home.stateVersion.
         type = "viml";
         config = ''
           lua << EOF
