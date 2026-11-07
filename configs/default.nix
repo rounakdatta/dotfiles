@@ -20,6 +20,7 @@
     ./cargo
     ./mic
     ./claude-skills
+    ./agents
     ./timezone
     ./veans
     ./atuin

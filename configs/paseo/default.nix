@@ -57,17 +57,21 @@ let
   # bytes are the ones `npm install` would accept. A plugin's dependencies
   # are not fetched: Paseo provides the SDK, React and zod to the plugins it
   # compiles, and a plugin that needs more is not one this can install.
+  # A plugin kept in this repository (`src`) is copied as it is.
   pluginPackage = id: plugin:
-    let
-      tarball = pkgs.fetchurl {
-        url = "https://registry.npmjs.org/${plugin.npm}/-/${baseNameOf plugin.npm}-${plugin.version}.tgz";
-        hash = plugin.integrity;
-      };
-    in
-    pkgs.runCommand "paseo-plugin-${id}-${plugin.version}" { } ''
-      mkdir -p $out
-      tar -xzf ${tarball} -C $out --strip-components=1
-    '';
+    if plugin.src != null then
+      pkgs.runCommand "paseo-plugin-${id}" { } "cp -r ${plugin.src} $out"
+    else
+      let
+        tarball = pkgs.fetchurl {
+          url = "https://registry.npmjs.org/${plugin.npm}/-/${baseNameOf plugin.npm}-${plugin.version}.tgz";
+          hash = plugin.integrity;
+        };
+      in
+      pkgs.runCommand "paseo-plugin-${id}-${plugin.version}" { } ''
+        mkdir -p $out
+        tar -xzf ${tarball} -C $out --strip-components=1
+      '';
 
   declaredPlugins = lib.mapAttrs
     (id: plugin: {
@@ -392,17 +396,25 @@ in
     plugins = lib.mkOption {
       type = lib.types.attrsOf (lib.types.submodule {
         options = {
+          src = lib.mkOption {
+            type = lib.types.nullOr lib.types.path;
+            default = null;
+            description = "A plugin directory in this repository, instead of an npm package.";
+          };
           npm = lib.mkOption {
-            type = lib.types.str;
+            type = lib.types.nullOr lib.types.str;
+            default = null;
             example = "@omercnet/paseo-pr-radar";
             description = "The npm package the plugin is published as.";
           };
           version = lib.mkOption {
-            type = lib.types.str;
+            type = lib.types.nullOr lib.types.str;
+            default = null;
             example = "1.0.1";
           };
           integrity = lib.mkOption {
-            type = lib.types.str;
+            type = lib.types.nullOr lib.types.str;
+            default = null;
             example = "sha512-qY76jnjreXWeVzL+…";
             description = "The registry's hash for that version: `npm view <npm>@<version> dist.integrity`.";
           };

@@ -1,0 +1,5 @@
+{
+  "id": "agent-mcp",
+  "description": "Gives Codex agents the MCP servers Claude Code gets, chosen by the agent's working directory.",
+  "requirements": { "paseo": ">=0.14.0 <1.0.0" }
+}
