@@ -273,6 +273,13 @@ in
             fi
 
             cp "$body_file" "$destination/CLAUDE.md"
+
+            # Codex, OpenCode and Antigravity read AGENTS.md and never
+            # CLAUDE.md: the same instructions, under their name. A real
+            # AGENTS.md already there is not this one's to replace.
+            if [ ! -e "$destination/AGENTS.md" ] || [ -L "$destination/AGENTS.md" ]; then
+              ln -sfn CLAUDE.md "$destination/AGENTS.md"
+            fi
           done <<EOF
         $destinations
         EOF

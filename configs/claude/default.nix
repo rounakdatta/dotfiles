@@ -787,6 +787,11 @@ in
     fi
   '';
 
+  # The same inventory as data, for the agents that are not Claude Code
+  # (configs/agents): Codex, OpenCode and Antigravity get these servers from it.
+  # It holds no secrets, only the pass entries' names inside each helper.
+  xdg.configFile."agent-mcp/inventory.json".text = builtins.toJSON mcpInventory;
+
   # Merge global MCP servers into ~/.claude.json, preserving all other state
   home.activation.mergeGlobalMcpServers = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     CLAUDE_JSON="${config.home.homeDirectory}/.claude.json"

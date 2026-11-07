@@ -206,6 +206,8 @@ in
       # and `agy`, which prints a URL and asks for the code it shows.
       opencode
       antigravity-cli
+      # uvx, which the Lyric Grafana MCP servers run through (configs/claude).
+      uv
     ];
 
     # OpenCode cannot upgrade a store install, so its update check would only
@@ -324,6 +326,10 @@ in
       };
     };
 
+    # Claude Code's MCP servers, skills and instructions for the other agents
+    # Paseo runs here: Codex, OpenCode and Antigravity (configs/agents).
+    agentToolchain.enable = true;
+
     # Paseo is the UI of the agentfest computer, the Codeman successor built
     # from this same profile. (festie itself stays on its pinned 0.1.x image,
     # which never sees this.) Everything below is host-side state, which is
@@ -364,6 +370,20 @@ in
         # By absolute path, so that a copy agy's self-updater drops somewhere
         # on PATH can never replace the pinned one.
         agents.providers.antigravity.command = [ "${antigravity-cli}/bin/agy" ];
+
+        # Codex reads instructions and skills from its project root down to
+        # the session's directory. The root is the nearest directory holding
+        # .agents-root, which configs/agents puts in ~/personal and ~/work, so
+        # a session in a repository below them still gets their AGENTS.md and
+        # skills, as Claude Code does; a repository's own CLAUDE.md is read
+        # where it has no AGENTS.md.
+        agents.providers.codex.command = [
+          "codex"
+          "-c"
+          ''project_root_markers=[".agents-root"]''
+          "-c"
+          ''project_doc_fallback_filenames=["CLAUDE.md"]''
+        ];
 
         # One tap back to this machine's defaults after trying something else,
         # and what an orchestrating agent reads before launching a worker.
@@ -448,6 +468,9 @@ in
         };
         # Each workspace's Beads queue, through `bd --readonly`, from the
         # trackers declared in `beads` below.
+        # Ours, in configs/paseo/plugins: Claude Code's MCP servers for Codex
+        # agents, picked by their working directory (see configs/agents).
+        agent-mcp.src = ../../configs/paseo/plugins/agent-mcp;
         paseo-beads = {
           npm = "@omercnet/paseo-beads";
           version = "3.1.1";
