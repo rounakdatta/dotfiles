@@ -21,6 +21,18 @@ let
       runHook postInstall
     '';
   };
+
+  # Antigravity's CLI (`agy`), for Paseo's built-in Antigravity provider, which
+  # needs 1.1.15 or newer. nixpkgs at this pin has 1.4.8; this is the same
+  # Google release binary at 1.5.2. `agy` updates itself in the background, but
+  # it cannot write to the store, so the version here is the one that runs.
+  antigravity-cli = pkgs.antigravity-cli.overrideAttrs {
+    version = "1.5.2";
+    src = pkgs.fetchurl {
+      url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.2-6638575329083392/linux-x64/cli_linux_x64.tar.gz";
+      hash = "sha512-M3ELzotyAXy6KQYN6IX0nFpaGI0TF0olHNmACyVFSLE8hbuyUXV9/rFoO3gcjcIsd5E4jdk5PxA889ItSHu3OA==";
+    };
+  };
 in
 {
 
@@ -163,7 +175,20 @@ in
       # command exits and kills the browser with it — the sequence the skill is
       # built on then loses all state between steps.
       xorg-server
+
+      # The agents Paseo runs besides Claude Code. Claude Code and Codex come
+      # from npm, pinned by agentfest's chart, because their client version
+      # decides which models they offer. These two are not on npm (OpenCode 2
+      # ships as GitHub releases, agy as a Google download), so they come from
+      # here. Each signs in once, in a Paseo terminal: `opencode auth login`,
+      # and `agy`, which prints a URL and asks for the code it shows.
+      opencode
+      antigravity-cli
     ];
+
+    # OpenCode runs from the store, which its updater cannot replace, so its
+    # update check would only cost a request at every start.
+    sessionVariables.OPENCODE_DISABLE_AUTOUPDATE = "true";
   };
 
   # The GPG key is passphrase-protected, and on a headless box that is the
@@ -314,6 +339,10 @@ in
           }
         ];
 
+        # By absolute path, so that a copy agy's self-updater drops somewhere
+        # on PATH can never replace the pinned one.
+        agents.providers.antigravity.command = [ "${antigravity-cli}/bin/agy" ];
+
         # One tap back to this machine's defaults after trying something else,
         # and what an orchestrating agent reads before launching a worker.
         daemon.agentProfiles = [
@@ -325,6 +354,22 @@ in
             modeId = "bypassPermissions";
             thinkingOptionId = "max";
             notes = "The default on this machine: Opus 5.5 at max effort with no permission prompts. Use for work that should run to completion unattended.";
+          }
+          # Antigravity needs no profile: full access is its only mode.
+          {
+            id = "codex-full-access";
+            name = "Codex · Full Access";
+            provider = "codex";
+            modeId = "full-access";
+            notes = "Codex with no approval prompts and no sandbox, for work that should run to completion unattended. Model and effort are Codex's defaults for the signed-in account.";
+          }
+          {
+            id = "opencode-build-auto";
+            name = "OpenCode · Build · Auto-accept";
+            provider = "opencode";
+            modeId = "build";
+            featureValues.auto_accept = true;
+            notes = "OpenCode in Build mode with every permission prompt approved, for work that should run to completion unattended. The model is whichever one OpenCode is signed in to.";
           }
         ];
       };
