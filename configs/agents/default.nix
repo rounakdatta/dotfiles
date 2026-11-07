@@ -38,7 +38,11 @@ in
     home.packages = [ launcher ];
 
     home.activation.agentToolchain = lib.hm.dag.entryAfter
-      [ "writeBoundary" "writeProjectLocalMcpServers" "syncPrivateSkills" "syncClaudeDocs" ]
+      # linkGeneration explicitly: home-manager breaks ties by name, and
+      # without it this entry, and the agent-smith clone it waits for, sorted
+      # before the relink, so a failing clone left every link pointing into
+      # the previous image's store, and this read stale links.
+      [ "linkGeneration" "writeProjectLocalMcpServers" "syncPrivateSkills" "syncClaudeDocs" ]
       ''
         JQ="${pkgs.jq}/bin/jq"
         INVENTORY="${inventory}"
