@@ -26,7 +26,8 @@ const INVENTORY = path.join(homedir(), ".config", "agent-mcp", "inventory.json")
 // provider takes none.
 const PROVIDERS = new Set(["codex"]);
 
-const HELPER_TIMEOUT_MS = 20_000;
+// Both well inside Paseo's 30 s for the whole hook, which fails the open.
+const HELPER_TIMEOUT_MS = 10_000;
 const PROBE_TIMEOUT_MS = 8_000;
 
 interface Entry {
