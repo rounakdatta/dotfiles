@@ -185,10 +185,6 @@ in
       opencode
       antigravity-cli
     ];
-
-    # OpenCode runs from the store, which its updater cannot replace, so its
-    # update check would only cost a request at every start.
-    sessionVariables.OPENCODE_DISABLE_AUTOUPDATE = "true";
   };
 
   # The GPG key is passphrase-protected, and on a headless box that is the
