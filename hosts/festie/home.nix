@@ -33,6 +33,28 @@ let
       hash = "sha512-M3ELzotyAXy6KQYN6IX0nFpaGI0TF0olHNmACyVFSLE8hbuyUXV9/rFoO3gcjcIsd5E4jdk5PxA889ItSHu3OA==";
     };
   };
+
+  # OpenCode 2, for Paseo's OpenCode provider (2.0.10 or newer). nixpkgs at
+  # this pin cannot build it (its `bun install` no longer matches the pinned
+  # hash, which is also why the binary cache lacks it), so this is upstream's
+  # release binary. It is a Bun single-file executable: patching its ELF would
+  # cut off the program appended to it, so it is left as built and runs
+  # through the image's FHS loader, like Claude Code's native binary.
+  opencode = pkgs.stdenvNoCC.mkDerivation rec {
+    pname = "opencode";
+    version = "2.2.6";
+    src = pkgs.fetchurl {
+      url = "https://github.com/anomalyco/opencode/releases/download/v${version}/opencode-linux-x64.tar.gz";
+      hash = "sha256-CLsh1jJs50DZHM5+voimU2kz9uHjA1O5GgawHyXaMGw=";
+    };
+    sourceRoot = ".";
+    dontFixup = true;
+    installPhase = ''
+      runHook preInstall
+      install -Dm755 opencode $out/bin/opencode
+      runHook postInstall
+    '';
+  };
 in
 {
 
@@ -185,6 +207,10 @@ in
       opencode
       antigravity-cli
     ];
+
+    # OpenCode cannot upgrade a store install, so its update check would only
+    # cost a request at every start.
+    sessionVariables.OPENCODE_DISABLE_AUTOUPDATE = "true";
   };
 
   # The GPG key is passphrase-protected, and on a headless box that is the
