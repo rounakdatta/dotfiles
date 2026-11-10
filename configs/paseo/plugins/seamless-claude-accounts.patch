@@ -1,0 +1,202 @@
+paseo-seamless-claude-accounts 1.7.0 (9db99b1), for two organizations of one person.
+
+- Only the Claude login moves between config dirs. A dir's MCP OAuth logins and plugin
+  secrets stay with it, so a switch neither drops them nor makes them live in two dirs.
+- When Anthropic can't be asked, the account block no longer chooses between two
+  organizations of one person: it is all that tells them apart, and it can lag a switch.
+- "You've hit your monthly spend limit." and "You're out of extra usage" count as limits.
+
+diff --git a/server/failover.ts b/server/failover.ts
+index eadf2b5..12f7517 100644
+--- a/server/failover.ts
++++ b/server/failover.ts
+@@ -5,7 +5,7 @@ import type { AccountService } from "./service.ts";
+ // "You've hit your session limit · resets 11:30pm". Anchored and short so replies that merely
+ // discuss limits never match.
+ const LIMIT_NOTICE =
+-  /^\s*(?:you'?ve|you have) (?:hit|reached) your (?:[\w-]+ )?limit\b|^\s*(?:claude ai )?usage limit reached\b/i;
++  /^\s*(?:you'?ve|you have) (?:hit|reached) your (?:[\w-]+ ){0,2}limit\b|^\s*(?:claude ai )?usage limit reached\b|^\s*you'?re out of extra usage\b/i;
+ const NOTICE_MAX_LENGTH = 300;
+ 
+ // Chats hitting the limit within this window follow the switch already made.
+diff --git a/server/store.ts b/server/store.ts
+index 615adae..b555933 100644
+--- a/server/store.ts
++++ b/server/store.ts
+@@ -188,6 +188,14 @@ async function writeAccountBlock(path: string, block: unknown): Promise<void> {
+   await writeAtomic(path, `${JSON.stringify(settings, null, 2)}\n`);
+ }
+ 
++// Only the Claude login moves between config dirs. The rest of a credential file (MCP servers'
++// OAuth logins, plugin secrets) belongs to the dir: carried along, it would be lost on a switch or
++// be live in two dirs at once. `raw` must hold a login.
++async function withLogin(path: string, raw: string): Promise<string> {
++  const { claudeAiOauth } = JSON.parse(raw) as { claudeAiOauth: unknown };
++  return JSON.stringify({ ...(await readJson(path)), claudeAiOauth });
++}
++
+ export function fingerprint(token: string): string {
+   return createHash("sha256").update(token).digest("hex");
+ }
+@@ -332,7 +340,8 @@ export class Store {
+       const stored = raw === null ? null : parseLogin(raw);
+       const live = parseLogin((await readText(join(seat.dir, ".credentials.json"))) ?? "");
+       if (raw === null || stored === null || live === null) return;
+-      if ((stored.expiresAt ?? 0) > (live.expiresAt ?? 0)) await writeAtomic(join(seat.dir, ".credentials.json"), raw);
++      const file = join(seat.dir, ".credentials.json");
++      if ((stored.expiresAt ?? 0) > (live.expiresAt ?? 0)) await writeAtomic(file, await withLogin(file, raw));
+     });
+   }
+ 
+@@ -411,8 +420,17 @@ export class Store {
+     // A switch never leaves it naming another account, so it can be trusted here, including for an
+     // account signed in by hand that has no profile yet.
+     if (live.identity === null) return { owner: undefined, key: null, email: "" };
+-    const byIdentity = profiles.find((profile) => profile.identity?.key === live.identity?.key);
+-    return { owner: byIdentity, key: live.identity.key, email: live.identity.email };
++    // Except between organizations of one person: the block is all that tells them apart, and a
++    // switch cut short or a racing settings write can leave it naming the other one.
++    const { key } = live.identity;
++    const person = (other: string) => other.split("/")[0];
++    const sibling = profiles.some((profile) => {
++      const other = profile.identity?.key;
++      return other !== undefined && other !== key && person(other) === person(key);
++    });
++    if (sibling) return { owner: undefined, key: null, email: "" };
++    const byIdentity = profiles.find((profile) => profile.identity?.key === key);
++    return { owner: byIdentity, key, email: live.identity.email };
+   }
+ 
+   async #sync(seat: Seat, ownerId?: string | null): Promise<Profile | null> {
+@@ -531,7 +549,8 @@ export class Store {
+       const credentials = join(seat.dir, ".credentials.json");
+       const previous = (await readJson(seat.settings))?.oauthAccount;
+       const previousInside = (await readJson(join(seat.dir, ".claude.json")))?.oauthAccount;
+-      await writeAtomic(credentials, raw);
++      const body = await withLogin(credentials, raw);
++      await writeAtomic(credentials, body);
+       // Without this Claude Code keeps showing the previous account's address.
+       const block = (await readJson(join(profile.dir, ".claude.json")))?.oauthAccount;
+       const inside = join(seat.dir, ".claude.json");
+@@ -540,7 +559,7 @@ export class Store {
+         await writeAccountBlock(seat.settings, block);
+         if (insideIsOwn) await writeAccountBlock(inside, block);
+       }
+-      if ((await readText(credentials)) !== raw) {
++      if ((await readText(credentials)) !== body) {
+         // Claude Code renewed the old token mid-switch and its write won: the old account stays,
+         // so its account block goes back too and keeps naming the login actually there.
+         if (block !== undefined) {
+diff --git a/tests/failover.test.ts b/tests/failover.test.ts
+index 095bf49..3c69848 100644
+--- a/tests/failover.test.ts
++++ b/tests/failover.test.ts
+@@ -15,6 +15,9 @@ describe("isLimitNotice", () => {
+       "You've reached your Fable limit.",
+       "You've hit your Fable limit · resets Nov 3, 1am",
+       "Claude AI usage limit reached|1791754200",
++      "You've hit your monthly spend limit.",
++      "You've hit your monthly spend limit · your weekly limit resets Nov 15, 5:30pm",
++      "You're out of extra usage",
+     ]) {
+       assert.ok(isLimitNotice(text), text);
+     }
+diff --git a/tests/store.test.ts b/tests/store.test.ts
+index e496fb1..ec34ba6 100644
+--- a/tests/store.test.ts
++++ b/tests/store.test.ts
+@@ -181,6 +181,66 @@ describe("Store", () => {
+     assert.equal(live?.accessToken, "renewed");
+   });
+ 
++  it("keeps a config dir's MCP logins and plugin secrets across switches", async () => {
++    await addProfile(f.home, "home", { email: "h@x.io" });
++    await addProfile(f.home, "work", { email: "w@x.io" });
++    await setLive(f.home, { email: "h@x.io" });
++    const file = join(f.home, ".claude", ".credentials.json");
++    const extras = {
++      mcpOAuth: { "kite|1": { accessToken: "mcp-at", refreshToken: "mcp-rt" } },
++      mcpOAuthClientConfig: { "kite|1": { clientSecret: "secret" } },
++      pluginSecrets: { tool: { key: "value" } },
++    };
++    await writeFile(file, JSON.stringify({ ...(await readJson(file)), ...extras }), { mode: 0o600 });
++
++    await f.store.install("work");
++    const onWork = await readJson(file);
++    assert.equal(onWork.claudeAiOauth.accessToken, "at-w@x.io");
++    const { claudeAiOauth: _, ...kept } = onWork;
++    assert.deepEqual(kept, extras);
++
++    // An MCP login made while on work stays with the dir when it switches back.
++    onWork.mcpOAuth["zomato|2"] = { accessToken: "z" };
++    await writeFile(file, JSON.stringify(onWork), { mode: 0o600 });
++    await f.store.install("home");
++    const back = await readJson(file);
++    assert.equal(back.claudeAiOauth.accessToken, "at-h@x.io");
++    assert.deepEqual(Object.keys(back.mcpOAuth).sort(), ["kite|1", "zomato|2"]);
++  });
++
++  it("moves only the Claude login into an account's own config dir", async () => {
++    const dir = await addProfile(f.home, "home", { email: "h@x.io" });
++    // A profile saved from a live dir holds that dir's MCP logins: copied on, they would be live twice.
++    const saved = join(dir, ".credentials.json");
++    await writeFile(saved, JSON.stringify({ ...(await readJson(saved)), mcpOAuth: { "kite|1": { refreshToken: "x" } } }));
++    await setLive(f.home, { email: "w@x.io" });
++    const seat = f.store.accountSeat("home");
++    const file = join(seat.dir, ".credentials.json");
++
++    await f.store.install("home", seat, null);
++    const first = await readJson(file);
++    assert.equal(first.claudeAiOauth.accessToken, "at-h@x.io");
++    assert.equal(first.mcpOAuth, undefined);
++
++    await writeFile(file, JSON.stringify({ ...first, mcpOAuth: { "zomato|2": { accessToken: "own" } } }));
++    await f.store.install("home", seat, null);
++    assert.deepEqual(Object.keys((await readJson(file)).mcpOAuth), ["zomato|2"]);
++  });
++
++  it("adopts a newer profile login without dropping the dir's other logins", async () => {
++    await addProfile(f.home, "home", { email: "h@x.io", token: "newer", expiresAt: Date.now() + 9_000_000 });
++    const seat = f.store.accountSeat("home");
++    await mkdir(seat.dir, { recursive: true });
++    await writeFile(
++      join(seat.dir, ".credentials.json"),
++      JSON.stringify({ ...JSON.parse(credentials({ email: "h@x.io", token: "older" })), mcpOAuth: { "kite|1": {} } }),
++    );
++    await f.store.adopt(seat, "home");
++    const adopted = await readJson(join(seat.dir, ".credentials.json"));
++    assert.equal(adopted.claudeAiOauth.accessToken, "newer");
++    assert.deepEqual(Object.keys(adopted.mcpOAuth), ["kite|1"]);
++  });
++
+   it("reports no change when asked for the account already live", async () => {
+     await addProfile(f.home, "home", { email: "h@x.io" });
+     await setLive(f.home, { email: "h@x.io" });
+@@ -326,6 +386,27 @@ describe("Store ownership of the default login", () => {
+     assert.equal(home?.refreshToken, "rt-h-9");
+   });
+ 
++  it("does not let the account block choose between two organizations of one person", async () => {
++    const block = (organizationUuid: string) => ({ emailAddress: "p@x.io", accountUuid: "uuid-p", organizationUuid });
++    for (const id of ["one", "two"]) {
++      const dir = join(f.home, `.claude-${id}`);
++      await mkdir(dir, { recursive: true });
++      const login = { accessToken: `at-${id}`, refreshToken: `rt-${id}`, expiresAt: later() };
++      await writeFile(join(dir, ".credentials.json"), JSON.stringify({ claudeAiOauth: login }));
++      await writeFile(join(dir, ".claude.json"), JSON.stringify({ oauthAccount: block(`org-${id}`) }));
++    }
++    // Org two is live with a token Anthropic cannot place, while the settings still name org one,
++    // as a switch cut short leaves them.
++    await mkdir(join(f.home, ".claude"), { recursive: true });
++    const rotated = { accessToken: "unreachable", refreshToken: "rt-two-rotated", expiresAt: later() };
++    await writeFile(join(f.home, ".claude", ".credentials.json"), JSON.stringify({ claudeAiOauth: rotated }));
++    await writeFile(join(f.home, ".claude.json"), JSON.stringify({ oauthAccount: block("org-one") }));
++
++    assert.equal(await f.store.sync(), null);
++    const one = parseLogin(await readFile(join(f.home, ".claude-one", ".credentials.json"), "utf8"));
++    assert.equal(one?.refreshToken, "rt-one");
++  });
++
+   it("keeps an account signed in by hand while offline as a new profile", async () => {
+     await addProfile(f.home, "home", { email: "h@x.io" });
+     await setLive(f.home, { email: "h@x.io" });

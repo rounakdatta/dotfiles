@@ -57,7 +57,8 @@ let
   # bytes are the ones `npm install` would accept. A plugin's dependencies
   # are not fetched: Paseo provides the SDK, React and zod to the plugins it
   # compiles, and a plugin that needs more is not one this can install.
-  # A plugin kept in this repository (`src`) is copied as it is.
+  # A plugin given as a directory (`src`: one in this repository, or a pinned
+  # fetch) is copied as it is.
   pluginPackage = id: plugin:
     if plugin.src != null then
       pkgs.runCommand "paseo-plugin-${id}" { } "cp -r ${plugin.src} $out"
@@ -399,7 +400,7 @@ in
           src = lib.mkOption {
             type = lib.types.nullOr lib.types.path;
             default = null;
-            description = "A plugin directory in this repository, instead of an npm package.";
+            description = "A plugin directory (one in this repository, or a pinned fetch) instead of an npm package.";
           };
           npm = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
