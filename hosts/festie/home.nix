@@ -454,9 +454,9 @@ in
         ];
       };
 
-      # Third-party code (omercnet, MIT) that runs unsandboxed as this user, so
-      # pinned to versions whose server code was read: both only read, through
-      # the CLIs named below.
+      # Third-party code that runs unsandboxed as this user, so pinned to
+      # versions whose server code was read. pr-radar and paseo-beads
+      # (omercnet, MIT) only read, through the CLIs named below.
       plugins = {
         # Open pull requests you wrote or were asked to review, sorted by who
         # has to act next. Runs `gh search prs`, `gh api user` and one GraphQL
@@ -475,6 +475,23 @@ in
           npm = "@omercnet/paseo-beads";
           version = "3.1.1";
           integrity = "sha512-TN8gJI42m+vl0grzMX9JcnCT/o6sHmgCngpPxtNOXAgd4iGcGJ1d/57ZEPw2U4yzYOOPFeJNwC6B9tDWAb/Xrw==";
+        };
+        # Both Claude orgs behind every chat (ChoqueCastroLD, MIT). A
+        # workspace's chats run with CLAUDE_CONFIG_DIR set to a link the plugin
+        # repoints, so they change account without a restart. It writes the
+        # logins in ~/.claude, ~/.claude.json and ~/.claude-<name>, and sends
+        # each token only to api.anthropic.com. Not on npm: pinned to the 1.7.0
+        # commit that was read, with the fixes two orgs of one person need
+        # (the patch says which).
+        seamless-claude-accounts.src = pkgs.applyPatches {
+          name = "paseo-seamless-claude-accounts-1.7.0";
+          src = pkgs.fetchFromGitHub {
+            owner = "ChoqueCastroLD";
+            repo = "paseo-seamless-claude-accounts";
+            rev = "9db99b1fadb824979ccfb74053a27bdda7674bff";
+            hash = "sha256-4MlH2jazj+Jh/wGsQTaBvy6+lLJDwfR0/tidir4maPw=";
+          };
+          patches = [ ../../configs/paseo/plugins/seamless-claude-accounts.patch ];
         };
       };
 
