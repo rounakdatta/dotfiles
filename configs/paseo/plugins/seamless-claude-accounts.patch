@@ -1,84 +1,134 @@
 paseo-seamless-claude-accounts 1.7.0 (9db99b1), for two organizations of one person.
 
-- Only the Claude login moves between config dirs. A dir's MCP OAuth logins and plugin
-  secrets stay with it, so a switch neither drops them nor makes them live in two dirs.
-- When Anthropic can't be asked, the account block no longer chooses between two
-  organizations of one person: it is all that tells them apart, and it can lag a switch.
-- "You've hit your monthly spend limit." and "You're out of extra usage" count as limits.
+- A switch moves only the Claude login and its organization's trusted device token. The
+  rest of a credential file stays with its config dir: MCP servers' OAuth logins (their
+  refresh tokens rotate, so a copy would break one of them) and the client registrations
+  and plugin secrets, which a new dir copies from the live one.
+- When Anthropic can't be asked, the account block chooses between two organizations of
+  one person only if the last owner recorded for the seat agrees. Settings naming the
+  other organization are corrected at the next sync.
+- Claude Code's credit and budget notices count as limits. A notice must end after
+  "limit" or go on with "·", "|", "—" or "(", so ordinary replies don't match.
 
 diff --git a/server/failover.ts b/server/failover.ts
-index eadf2b5..12f7517 100644
+index eadf2b5..0847251 100644
 --- a/server/failover.ts
 +++ b/server/failover.ts
-@@ -5,7 +5,7 @@ import type { AccountService } from "./service.ts";
+@@ -3,9 +3,9 @@ import { switchRow, type Preferences, type SwitchRow } from "../shared/contracts
+ import type { AccountService } from "./service.ts";
+ 
  // "You've hit your session limit · resets 11:30pm". Anchored and short so replies that merely
- // discuss limits never match.
+-// discuss limits never match.
++// discuss limits never match: after "limit" a notice ends, or goes on with "·", "|", "—" or "(".
  const LIMIT_NOTICE =
 -  /^\s*(?:you'?ve|you have) (?:hit|reached) your (?:[\w-]+ )?limit\b|^\s*(?:claude ai )?usage limit reached\b/i;
-+  /^\s*(?:you'?ve|you have) (?:hit|reached) your (?:[\w-]+ ){0,2}limit\b|^\s*(?:claude ai )?usage limit reached\b|^\s*you'?re out of extra usage\b/i;
++  /^\s*(?:you'?ve|you have) (?:hit|reached) your (?:[\w'-]+ ){0,3}limit\.?\s*(?:$|[·|—(])|^\s*you'?ve hit your team'?s shared budget\b|^\s*(?:claude ai )?usage limit reached\b|^\s*you'?re out of (?:extra usage|usage credits)\b|^\s*your org is out of usage\b/i;
  const NOTICE_MAX_LENGTH = 300;
  
  // Chats hitting the limit within this window follow the switch already made.
 diff --git a/server/store.ts b/server/store.ts
-index 615adae..b555933 100644
+index 615adae..b3b6e1b 100644
 --- a/server/store.ts
 +++ b/server/store.ts
-@@ -188,6 +188,14 @@ async function writeAccountBlock(path: string, block: unknown): Promise<void> {
+@@ -188,6 +188,27 @@ async function writeAccountBlock(path: string, block: unknown): Promise<void> {
    await writeAtomic(path, `${JSON.stringify(settings, null, 2)}\n`);
  }
  
-+// Only the Claude login moves between config dirs. The rest of a credential file (MCP servers'
-+// OAuth logins, plugin secrets) belongs to the dir: carried along, it would be lost on a switch or
-+// be live in two dirs at once. `raw` must hold a login.
-+async function withLogin(path: string, raw: string): Promise<string> {
-+  const { claudeAiOauth } = JSON.parse(raw) as { claudeAiOauth: unknown };
-+  return JSON.stringify({ ...(await readJson(path)), claudeAiOauth });
++// A switch moves the Claude login and the device token its organization trusts. The rest of a
++// credential file belongs to the dir. MCP servers' OAuth logins rotate their refresh tokens, so a
++// copy in a second dir would break one of them. Client registrations and plugin secrets never
++// change, so a dir without them starts with the live dir's.
++const LOGIN_KEYS = ["claudeAiOauth", "trustedDeviceToken"];
++const FIXED_KEYS = ["mcpOAuthClientConfig", "pluginSecrets"];
++
++function pick(record: Record<string, unknown> | null, keys: string[]): Record<string, unknown> {
++  const picked: Record<string, unknown> = {};
++  for (const key of keys) if (record?.[key] !== undefined) picked[key] = record[key];
++  return picked;
++}
++
++/** The credential file `path` should hold to carry the login in `raw`, which must hold one. */
++async function withLogin(path: string, raw: string, live: string): Promise<string> {
++  const own = Object.entries((await readJson(path)) ?? {}).filter(([key]) => !LOGIN_KEYS.includes(key));
++  const seed = path === live ? {} : pick(await readJson(live), FIXED_KEYS);
++  const login = pick(JSON.parse(raw) as Record<string, unknown>, LOGIN_KEYS);
++  return JSON.stringify({ ...seed, ...Object.fromEntries(own), ...login });
 +}
 +
  export function fingerprint(token: string): string {
    return createHash("sha256").update(token).digest("hex");
  }
-@@ -332,7 +340,8 @@ export class Store {
+@@ -332,7 +353,10 @@ export class Store {
        const stored = raw === null ? null : parseLogin(raw);
        const live = parseLogin((await readText(join(seat.dir, ".credentials.json"))) ?? "");
        if (raw === null || stored === null || live === null) return;
 -      if ((stored.expiresAt ?? 0) > (live.expiresAt ?? 0)) await writeAtomic(join(seat.dir, ".credentials.json"), raw);
 +      const file = join(seat.dir, ".credentials.json");
-+      if ((stored.expiresAt ?? 0) > (live.expiresAt ?? 0)) await writeAtomic(file, await withLogin(file, raw));
++      if ((stored.expiresAt ?? 0) > (live.expiresAt ?? 0)) {
++        await writeAtomic(file, await withLogin(file, raw, this.liveCredentials));
++      }
      });
    }
  
-@@ -411,8 +420,17 @@ export class Store {
+@@ -411,8 +435,21 @@ export class Store {
      // A switch never leaves it naming another account, so it can be trusted here, including for an
      // account signed in by hand that has no profile yet.
      if (live.identity === null) return { owner: undefined, key: null, email: "" };
 -    const byIdentity = profiles.find((profile) => profile.identity?.key === live.identity?.key);
 -    return { owner: byIdentity, key: live.identity.key, email: live.identity.email };
-+    // Except between organizations of one person: the block is all that tells them apart, and a
-+    // switch cut short or a racing settings write can leave it naming the other one.
 +    const { key } = live.identity;
++    const byIdentity = profiles.find((profile) => profile.identity?.key === key);
++    // Between organizations of one person the block is all that tells them apart, and a switch cut
++    // short or a racing settings write can leave it naming the other one. It counts there only when
++    // the last owner recorded for this seat is the same profile.
 +    const person = (other: string) => other.split("/")[0];
 +    const sibling = profiles.some((profile) => {
 +      const other = profile.identity?.key;
 +      return other !== undefined && other !== key && person(other) === person(key);
 +    });
-+    if (sibling) return { owner: undefined, key: null, email: "" };
-+    const byIdentity = profiles.find((profile) => profile.identity?.key === key);
++    if (sibling) {
++      const last = seat.id === DEFAULT_SEAT ? (await this.#lineage())?.owner : undefined;
++      if (byIdentity === undefined || last !== byIdentity.id) return { owner: undefined, key: null, email: "" };
++    }
 +    return { owner: byIdentity, key, email: live.identity.email };
    }
  
    async #sync(seat: Seat, ownerId?: string | null): Promise<Profile | null> {
-@@ -531,7 +549,8 @@ export class Store {
+@@ -452,10 +489,19 @@ export class Store {
+     }
+     if (seat.id === DEFAULT_SEAT) {
+       await this.#recordLineage(owner.id, login);
+-      // Settings can name a previous account; show the one actually signed in. Only a different
+-      // account counts, not a block that merely carries more or fewer fields for the same one.
+-      const account = (identity: Identity | null) => identity?.key.split("/")[0] ?? null;
+-      if (owner.identity !== null && account(live.identity) !== account(owner.identity)) {
++      // Settings can name a previous account, or the other organization of the same person; show
++      // the one actually signed in. A block that merely carries more or fewer fields for the same
++      // one does not count.
++      const differs = (shown: Identity | null, actual: Identity) => {
++        if (shown === null) return true;
++        const [user, organization = ""] = shown.key.split("/");
++        const [actualUser, actualOrganization = ""] = actual.key.split("/");
++        return (
++          user !== actualUser ||
++          (organization !== "" && actualOrganization !== "" && organization !== actualOrganization)
++        );
++      };
++      if (owner.identity !== null && differs(live.identity, owner.identity)) {
+         const block = (await readJson(join(owner.dir, ".claude.json")))?.oauthAccount;
+         if (block !== undefined) await writeAccountBlock(seat.settings, block);
+       }
+@@ -531,7 +577,8 @@ export class Store {
        const credentials = join(seat.dir, ".credentials.json");
        const previous = (await readJson(seat.settings))?.oauthAccount;
        const previousInside = (await readJson(join(seat.dir, ".claude.json")))?.oauthAccount;
 -      await writeAtomic(credentials, raw);
-+      const body = await withLogin(credentials, raw);
++      const body = await withLogin(credentials, raw, this.liveCredentials);
 +      await writeAtomic(credentials, body);
        // Without this Claude Code keeps showing the previous account's address.
        const block = (await readJson(join(profile.dir, ".claude.json")))?.oauthAccount;
        const inside = join(seat.dir, ".claude.json");
-@@ -540,7 +559,7 @@ export class Store {
+@@ -540,7 +587,7 @@ export class Store {
          await writeAccountBlock(seat.settings, block);
          if (insideIsOwn) await writeAccountBlock(inside, block);
        }
@@ -88,24 +138,42 @@ index 615adae..b555933 100644
          // so its account block goes back too and keeps naming the login actually there.
          if (block !== undefined) {
 diff --git a/tests/failover.test.ts b/tests/failover.test.ts
-index 095bf49..3c69848 100644
+index 095bf49..efdba4a 100644
 --- a/tests/failover.test.ts
 +++ b/tests/failover.test.ts
-@@ -15,6 +15,9 @@ describe("isLimitNotice", () => {
+@@ -15,6 +15,17 @@ describe("isLimitNotice", () => {
        "You've reached your Fable limit.",
        "You've hit your Fable limit · resets Nov 3, 1am",
        "Claude AI usage limit reached|1791754200",
++      "You've hit your session limit · resets 11:30pm · progress saved",
++      "You've hit your fast limit",
 +      "You've hit your monthly spend limit.",
 +      "You've hit your monthly spend limit · your weekly limit resets Nov 15, 5:30pm",
++      "You've hit your monthly limit — raise it below",
++      "You've hit your channel's monthly spend limit.",
++      "You've hit your team's shared budget. Switch to another model to continue.",
 +      "You're out of extra usage",
++      "You're out of usage credits. Run /usage-credits to keep using Opus or /model to switch models.",
++      "Your org is out of usage · add funds to continue",
++      "Your org is out of usage · contact your admin",
      ]) {
        assert.ok(isLimitNotice(text), text);
      }
+@@ -25,6 +36,9 @@ describe("isLimitNotice", () => {
+       "I added a check so that when you've hit your limit the UI says so.",
+       "Rate limits are 50 requests per minute.",
+       `You've hit your session limit ${"x".repeat(400)}`,
++      "You've hit your API rate limit, so I'll back off and retry in a minute.",
++      "You've reached your free tier limit for this API; the next call will fail.",
++      "You've hit your GitHub API rate limit. I'll wait an hour and try again.",
+     ]) {
+       assert.ok(!isLimitNotice(text), text);
+     }
 diff --git a/tests/store.test.ts b/tests/store.test.ts
-index e496fb1..ec34ba6 100644
+index e496fb1..7097321 100644
 --- a/tests/store.test.ts
 +++ b/tests/store.test.ts
-@@ -181,6 +181,66 @@ describe("Store", () => {
+@@ -181,6 +181,98 @@ describe("Store", () => {
      assert.equal(live?.accessToken, "renewed");
    });
  
@@ -136,12 +204,19 @@ index e496fb1..ec34ba6 100644
 +    assert.deepEqual(Object.keys(back.mcpOAuth).sort(), ["kite|1", "zomato|2"]);
 +  });
 +
-+  it("moves only the Claude login into an account's own config dir", async () => {
++  it("starts an account's own config dir with its login and the live dir's fixed secrets only", async () => {
 +    const dir = await addProfile(f.home, "home", { email: "h@x.io" });
 +    // A profile saved from a live dir holds that dir's MCP logins: copied on, they would be live twice.
 +    const saved = join(dir, ".credentials.json");
-+    await writeFile(saved, JSON.stringify({ ...(await readJson(saved)), mcpOAuth: { "kite|1": { refreshToken: "x" } } }));
++    await writeFile(
++      saved,
++      JSON.stringify({ ...(await readJson(saved)), mcpOAuth: { "kite|1": { refreshToken: "x" } } }),
++    );
 +    await setLive(f.home, { email: "w@x.io" });
++    const live = join(f.home, ".claude", ".credentials.json");
++    const fixed = { mcpOAuthClientConfig: { "kite|1": { clientSecret: "s" } }, pluginSecrets: { tool: { key: "v" } } };
++    const liveLogins = { mcpOAuth: { "kite|1": { refreshToken: "live" } }, trustedDeviceToken: "device-w" };
++    await writeFile(live, JSON.stringify({ ...(await readJson(live)), ...fixed, ...liveLogins }));
 +    const seat = f.store.accountSeat("home");
 +    const file = join(seat.dir, ".credentials.json");
 +
@@ -149,10 +224,35 @@ index e496fb1..ec34ba6 100644
 +    const first = await readJson(file);
 +    assert.equal(first.claudeAiOauth.accessToken, "at-h@x.io");
 +    assert.equal(first.mcpOAuth, undefined);
++    assert.equal(first.trustedDeviceToken, undefined);
++    assert.deepEqual(first.mcpOAuthClientConfig, fixed.mcpOAuthClientConfig);
++    assert.deepEqual(first.pluginSecrets, fixed.pluginSecrets);
 +
-+    await writeFile(file, JSON.stringify({ ...first, mcpOAuth: { "zomato|2": { accessToken: "own" } } }));
++    // What the dir holds itself wins over the seed.
++    const own = { mcpOAuth: { "zomato|2": { accessToken: "own" } }, pluginSecrets: { own: {} } };
++    await writeFile(file, JSON.stringify({ ...first, ...own }));
 +    await f.store.install("home", seat, null);
-+    assert.deepEqual(Object.keys((await readJson(file)).mcpOAuth), ["zomato|2"]);
++    const again = await readJson(file);
++    assert.deepEqual(again.mcpOAuth, own.mcpOAuth);
++    assert.deepEqual(again.pluginSecrets, own.pluginSecrets);
++  });
++
++  it("moves the trusted device token with its login, as it belongs to the organization", async () => {
++    const work = await addProfile(f.home, "work", { email: "w@x.io" });
++    const home = await addProfile(f.home, "home", { email: "h@x.io" });
++    await setLive(f.home, { email: "h@x.io" });
++    const live = join(f.home, ".claude", ".credentials.json");
++    for (const [file, device] of [
++      [live, "device-h"],
++      [join(home, ".credentials.json"), "device-h"],
++      [join(work, ".credentials.json"), "device-w"],
++    ]) {
++      await writeFile(file, JSON.stringify({ ...(await readJson(file)), trustedDeviceToken: device }), { mode: 0o600 });
++    }
++    await f.store.install("work");
++    assert.equal((await readJson(live)).trustedDeviceToken, "device-w");
++    await f.store.install("home");
++    assert.equal((await readJson(live)).trustedDeviceToken, "device-h");
 +  });
 +
 +  it("adopts a newer profile login without dropping the dir's other logins", async () => {
@@ -172,12 +272,13 @@ index e496fb1..ec34ba6 100644
    it("reports no change when asked for the account already live", async () => {
      await addProfile(f.home, "home", { email: "h@x.io" });
      await setLive(f.home, { email: "h@x.io" });
-@@ -326,6 +386,27 @@ describe("Store ownership of the default login", () => {
+@@ -326,6 +418,64 @@ describe("Store ownership of the default login", () => {
      assert.equal(home?.refreshToken, "rt-h-9");
    });
  
-+  it("does not let the account block choose between two organizations of one person", async () => {
-+    const block = (organizationUuid: string) => ({ emailAddress: "p@x.io", accountUuid: "uuid-p", organizationUuid });
++  // Two organizations of one person: profiles "one" and "two" share the account and the address.
++  const block = (organizationUuid: string) => ({ emailAddress: "p@x.io", accountUuid: "uuid-p", organizationUuid });
++  const twoOrganizations = async () => {
 +    for (const id of ["one", "two"]) {
 +      const dir = join(f.home, `.claude-${id}`);
 +      await mkdir(dir, { recursive: true });
@@ -185,16 +286,52 @@ index e496fb1..ec34ba6 100644
 +      await writeFile(join(dir, ".credentials.json"), JSON.stringify({ claudeAiOauth: login }));
 +      await writeFile(join(dir, ".claude.json"), JSON.stringify({ oauthAccount: block(`org-${id}`) }));
 +    }
-+    // Org two is live with a token Anthropic cannot place, while the settings still name org one,
-+    // as a switch cut short leaves them.
++  };
++  const live = async (login: { accessToken: string; refreshToken: string }, organization: string) => {
 +    await mkdir(join(f.home, ".claude"), { recursive: true });
-+    const rotated = { accessToken: "unreachable", refreshToken: "rt-two-rotated", expiresAt: later() };
-+    await writeFile(join(f.home, ".claude", ".credentials.json"), JSON.stringify({ claudeAiOauth: rotated }));
-+    await writeFile(join(f.home, ".claude.json"), JSON.stringify({ oauthAccount: block("org-one") }));
++    const oauth = { ...login, expiresAt: later() };
++    await writeFile(join(f.home, ".claude", ".credentials.json"), JSON.stringify({ claudeAiOauth: oauth }));
++    await writeFile(join(f.home, ".claude.json"), JSON.stringify({ oauthAccount: block(organization) }));
++  };
++  // A token Anthropic cannot place, as when the profile endpoint is unreachable.
++  const rotated = { accessToken: "unreachable", refreshToken: "rt-rotated" };
++  const savedRefresh = async (id: string) =>
++    parseLogin(await readFile(join(f.home, `.claude-${id}`, ".credentials.json"), "utf8"))?.refreshToken;
 +
++  it("does not let the account block alone choose between two organizations of one person", async () => {
++    await twoOrganizations();
++    // A new login nobody has seen here, and settings naming org one.
++    await live(rotated, "org-one");
 +    assert.equal(await f.store.sync(), null);
-+    const one = parseLogin(await readFile(join(f.home, ".claude-one", ".credentials.json"), "utf8"));
-+    assert.equal(one?.refreshToken, "rt-one");
++    assert.equal(await savedRefresh("one"), "rt-one");
++  });
++
++  it("follows the account block between organizations when the last owner here agrees", async () => {
++    await twoOrganizations();
++    await live({ accessToken: "at-one", refreshToken: "rt-one" }, "org-one");
++    assert.equal((await f.store.sync())?.id, "one");
++    // Claude Code renews org one's token while Anthropic cannot be asked.
++    await live(rotated, "org-one");
++    assert.equal((await f.store.sync())?.id, "one");
++    assert.equal(await savedRefresh("one"), "rt-rotated");
++  });
++
++  it("copies nothing when the account block names another organization than the last owner", async () => {
++    await twoOrganizations();
++    await live({ accessToken: "at-two", refreshToken: "rt-two" }, "org-two");
++    assert.equal((await f.store.sync())?.id, "two");
++    // A switch cut short, or a racing settings write, left the settings naming org one.
++    await live(rotated, "org-one");
++    assert.equal(await f.store.sync(), null);
++    assert.equal(await savedRefresh("one"), "rt-one");
++    assert.equal(await savedRefresh("two"), "rt-two");
++  });
++
++  it("corrects settings that name the other organization of the same person", async () => {
++    await twoOrganizations();
++    await live({ accessToken: "at-two", refreshToken: "rt-two" }, "org-one");
++    assert.equal((await f.store.sync())?.id, "two");
++    assert.equal((await readJson(join(f.home, ".claude.json"))).oauthAccount.organizationUuid, "org-two");
 +  });
 +
    it("keeps an account signed in by hand while offline as a new profile", async () => {
