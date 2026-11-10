@@ -5,29 +5,34 @@ paseo-seamless-claude-accounts 1.7.0 (9db99b1), for two organizations of one per
   refresh tokens rotate, so a copy would break one of them) and the client registrations
   and plugin secrets, which a new dir copies from the live one.
 - When Anthropic can't be asked, the account block chooses between two organizations of
-  one person only if the last owner recorded for the seat agrees. Settings naming the
-  other organization are corrected at the next sync.
+  one person only if the last owner recorded for the seat agrees. A switch records its
+  account before writing the login, so a switch cut short can't make them agree wrongly.
+  Settings naming the other organization are corrected at the next sync.
+- A switch fails only if the old account's renewal replaced the new login. Anything else
+  written into the file at the same moment (an MCP login) leaves the switch in place.
 - Claude Code's credit and budget notices count as limits. A notice must end after
-  "limit" or go on with "·", "|", "—" or "(", so ordinary replies don't match.
+  "limit", go on with "·", "|", "—" or "(", or say how to carry on, so ordinary replies
+  don't match.
 
 diff --git a/server/failover.ts b/server/failover.ts
-index eadf2b5..0847251 100644
+index eadf2b5..ecfdbb9 100644
 --- a/server/failover.ts
 +++ b/server/failover.ts
-@@ -3,9 +3,9 @@ import { switchRow, type Preferences, type SwitchRow } from "../shared/contracts
+@@ -3,9 +3,10 @@ import { switchRow, type Preferences, type SwitchRow } from "../shared/contracts
  import type { AccountService } from "./service.ts";
  
  // "You've hit your session limit · resets 11:30pm". Anchored and short so replies that merely
 -// discuss limits never match.
-+// discuss limits never match: after "limit" a notice ends, or goes on with "·", "|", "—" or "(".
++// discuss limits never match: after "limit" a notice ends, goes on with "·", "|", "—" or "(", or
++// tells how to carry on ("Switch to another model", "/model", "Run /usage-credits").
  const LIMIT_NOTICE =
 -  /^\s*(?:you'?ve|you have) (?:hit|reached) your (?:[\w-]+ )?limit\b|^\s*(?:claude ai )?usage limit reached\b/i;
-+  /^\s*(?:you'?ve|you have) (?:hit|reached) your (?:[\w'-]+ ){0,3}limit\.?\s*(?:$|[·|—(])|^\s*you'?ve hit your team'?s shared budget\b|^\s*(?:claude ai )?usage limit reached\b|^\s*you'?re out of (?:extra usage|usage credits)\b|^\s*your org is out of usage\b/i;
++  /^\s*(?:you'?ve|you have) (?:hit|reached) your (?:[\w'-]+ ){0,3}limit(?:\.?\s*(?:$|[·|—(])|\.\s+(?:switch to another model|\/model\b|run \/usage-credits))|^\s*you'?ve hit your team'?s shared budget\b|^\s*(?:claude ai )?usage limit reached\b|^\s*you'?re out of (?:extra usage|usage credits)\b|^\s*your org is out of usage\b/i;
  const NOTICE_MAX_LENGTH = 300;
  
  // Chats hitting the limit within this window follow the switch already made.
 diff --git a/server/store.ts b/server/store.ts
-index 615adae..b3b6e1b 100644
+index 615adae..e30e5a7 100644
 --- a/server/store.ts
 +++ b/server/store.ts
 @@ -188,6 +188,27 @@ async function writeAccountBlock(path: string, block: unknown): Promise<void> {
@@ -118,30 +123,56 @@ index 615adae..b3b6e1b 100644
          const block = (await readJson(join(owner.dir, ".claude.json")))?.oauthAccount;
          if (block !== undefined) await writeAccountBlock(seat.settings, block);
        }
-@@ -531,7 +577,8 @@ export class Store {
+@@ -518,7 +564,8 @@ export class Store {
+ 
+       const raw = await readText(join(profile.dir, ".credentials.json"));
+       if (raw === null) throw new StoreError("no-login", `${id} has no stored login`);
+-      if (parseLogin(raw) === null) throw new StoreError("invalid-login", `${id} holds no Claude login`);
++      const login = parseLogin(raw);
++      if (login === null) throw new StoreError("invalid-login", `${id} holds no Claude login`);
+ 
+       if (lane) await this.#prepareLane(seat);
+       else await mkdir(seat.dir, { recursive: true });
+@@ -531,7 +578,11 @@ export class Store {
        const credentials = join(seat.dir, ".credentials.json");
        const previous = (await readJson(seat.settings))?.oauthAccount;
        const previousInside = (await readJson(join(seat.dir, ".claude.json")))?.oauthAccount;
 -      await writeAtomic(credentials, raw);
-+      const body = await withLogin(credentials, raw, this.liveCredentials);
-+      await writeAtomic(credentials, body);
++      // Recorded before the file changes, so a switch cut short never leaves the record naming the
++      // account that left while its successor's login is in place.
++      const previousLineage = lane ? null : await this.#lineage();
++      if (!lane) await this.#recordLineage(id, login);
++      await writeAtomic(credentials, await withLogin(credentials, raw, this.liveCredentials));
        // Without this Claude Code keeps showing the previous account's address.
        const block = (await readJson(join(profile.dir, ".claude.json")))?.oauthAccount;
        const inside = join(seat.dir, ".claude.json");
-@@ -540,7 +587,7 @@ export class Store {
+@@ -540,17 +591,17 @@ export class Store {
          await writeAccountBlock(seat.settings, block);
          if (insideIsOwn) await writeAccountBlock(inside, block);
        }
 -      if ((await readText(credentials)) !== raw) {
-+      if ((await readText(credentials)) !== body) {
++      if (parseLogin((await readText(credentials)) ?? "")?.refreshToken !== login.refreshToken) {
          // Claude Code renewed the old token mid-switch and its write won: the old account stays,
-         // so its account block goes back too and keeps naming the login actually there.
+-        // so its account block goes back too and keeps naming the login actually there.
++        // so its account block and record go back too and keep naming the login actually there.
          if (block !== undefined) {
+           if (previous !== undefined) await writeAccountBlock(seat.settings, previous);
+           if (insideIsOwn && previousInside !== undefined) await writeAccountBlock(inside, previousInside);
+         }
++        if (previousLineage !== null) await this.#writeLineage(previousLineage);
+         throw new StoreError("invalid-login", "the live login changed while switching; try again");
+       }
+-      const login = parseLogin(raw);
+-      if (!lane && login !== null) await this.#recordLineage(id, login);
++      // Anything written beside the login since (an MCP login, say) leaves the switch in place.
+       return { profile, changed: true, from };
+     });
+   }
 diff --git a/tests/failover.test.ts b/tests/failover.test.ts
-index 095bf49..efdba4a 100644
+index 095bf49..6f41954 100644
 --- a/tests/failover.test.ts
 +++ b/tests/failover.test.ts
-@@ -15,6 +15,17 @@ describe("isLimitNotice", () => {
+@@ -15,6 +15,21 @@ describe("isLimitNotice", () => {
        "You've reached your Fable limit.",
        "You've hit your Fable limit · resets Nov 3, 1am",
        "Claude AI usage limit reached|1791754200",
@@ -152,6 +183,10 @@ index 095bf49..efdba4a 100644
 +      "You've hit your monthly limit — raise it below",
 +      "You've hit your channel's monthly spend limit.",
 +      "You've hit your team's shared budget. Switch to another model to continue.",
++      "You've reached your Fable limit. Switch to another model to continue.",
++      "You've reached your Fable limit. Switch to another model, or manage usage credits at https://x.io, to continue.",
++      "You've reached your Fable limit. /model to switch models.",
++      "You've hit your monthly spend limit. Run /usage-credits to raise it and keep using Fable.",
 +      "You're out of extra usage",
 +      "You're out of usage credits. Run /usage-credits to keep using Opus or /model to switch models.",
 +      "Your org is out of usage · add funds to continue",
@@ -159,21 +194,58 @@ index 095bf49..efdba4a 100644
      ]) {
        assert.ok(isLimitNotice(text), text);
      }
-@@ -25,6 +36,9 @@ describe("isLimitNotice", () => {
+@@ -25,6 +40,10 @@ describe("isLimitNotice", () => {
        "I added a check so that when you've hit your limit the UI says so.",
        "Rate limits are 50 requests per minute.",
        `You've hit your session limit ${"x".repeat(400)}`,
 +      "You've hit your API rate limit, so I'll back off and retry in a minute.",
 +      "You've reached your free tier limit for this API; the next call will fail.",
 +      "You've hit your GitHub API rate limit. I'll wait an hour and try again.",
++      "You've hit your API rate limit. I'll wait a minute and retry.",
      ]) {
        assert.ok(!isLimitNotice(text), text);
      }
 diff --git a/tests/store.test.ts b/tests/store.test.ts
-index e496fb1..7097321 100644
+index e496fb1..ed275be 100644
 --- a/tests/store.test.ts
 +++ b/tests/store.test.ts
-@@ -181,6 +181,98 @@ describe("Store", () => {
+@@ -1,5 +1,6 @@
+ import assert from "node:assert/strict";
+-import { chmod, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
++import fsp, { chmod, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
++import { syncBuiltinESMExports } from "node:module";
+ import { join } from "node:path";
+ import { afterEach, beforeEach, describe, it } from "node:test";
+ import { parseIdentity, parseLogin, pathsFor, StoreError, writeAtomic } from "../server/store.ts";
+@@ -15,6 +16,27 @@ import {
+   type Fixture,
+ } from "./helpers.ts";
+ 
++// Runs `run`, calling `after` right after the first file renamed into `path`: another writer, or a
++// crash, landing between the plugin's write and anything it does next.
++async function afterNextWriteTo<T>(path: string, after: () => Promise<void>, run: () => Promise<T>): Promise<T> {
++  const rename = fsp.rename;
++  let fired = false;
++  fsp.rename = (async (from: string, to: string) => {
++    await rename(from, to);
++    if (!fired && to === path) {
++      fired = true;
++      await after();
++    }
++  }) as typeof fsp.rename;
++  syncBuiltinESMExports();
++  try {
++    return await run();
++  } finally {
++    fsp.rename = rename;
++    syncBuiltinESMExports();
++  }
++}
++
+ describe("parsing", () => {
+   it("reads the OAuth login and ignores everything else", () => {
+     const login = parseLogin(credentials({ email: "a@x.io", expiresAt: 5, refreshExpiresAt: 9 }));
+@@ -181,6 +203,98 @@ describe("Store", () => {
      assert.equal(live?.accessToken, "renewed");
    });
  
@@ -272,7 +344,7 @@ index e496fb1..7097321 100644
    it("reports no change when asked for the account already live", async () => {
      await addProfile(f.home, "home", { email: "h@x.io" });
      await setLive(f.home, { email: "h@x.io" });
-@@ -326,6 +418,64 @@ describe("Store ownership of the default login", () => {
+@@ -326,6 +440,116 @@ describe("Store ownership of the default login", () => {
      assert.equal(home?.refreshToken, "rt-h-9");
    });
  
@@ -332,6 +404,58 @@ index e496fb1..7097321 100644
 +    await live({ accessToken: "at-two", refreshToken: "rt-two" }, "org-one");
 +    assert.equal((await f.store.sync())?.id, "two");
 +    assert.equal((await readJson(join(f.home, ".claude.json"))).oauthAccount.organizationUuid, "org-two");
++  });
++
++  it("copies nothing after a switch between organizations is cut short", async () => {
++    await twoOrganizations();
++    await live({ accessToken: "at-one", refreshToken: "rt-one" }, "org-one");
++    await f.store.sync();
++    const file = join(f.home, ".claude", ".credentials.json");
++    // The plugin dies right after writing org two's login, before the settings name it.
++    const killed = async () => {
++      throw new Error("killed");
++    };
++    await assert.rejects(
++      afterNextWriteTo(file, killed, () => f.store.install("two")),
++      /killed/,
++    );
++    // Org two's token is renewed while Anthropic cannot be asked.
++    await writeFile(file, JSON.stringify({ claudeAiOauth: { ...rotated, expiresAt: later() } }));
++    assert.equal(await f.store.sync(), null);
++    assert.equal(await savedRefresh("one"), "rt-one");
++  });
++
++  it("keeps a switch when another write lands beside the new login", async () => {
++    await addProfile(f.home, "home", { email: "h@x.io" });
++    await addProfile(f.home, "work", { email: "w@x.io" });
++    await setLive(f.home, { email: "h@x.io" });
++    const file = join(f.home, ".claude", ".credentials.json");
++    // Claude Code saves an MCP login into the file right after the switch wrote it.
++    const mcpLogin = async () => {
++      await writeFile(file, JSON.stringify({ ...(await readJson(file)), mcpOAuth: { "kite|1": {} } }));
++    };
++    const result = await afterNextWriteTo(file, mcpLogin, () => f.store.install("work"));
++    assert.equal(result.changed, true);
++    assert.equal((await readJson(file)).claudeAiOauth.accessToken, "at-w@x.io");
++    assert.equal((await readJson(join(f.home, ".claude.json"))).oauthAccount.emailAddress, "w@x.io");
++  });
++
++  it("puts the old account back when its renewal overwrote the switch", async () => {
++    await addProfile(f.home, "home", { email: "h@x.io" });
++    await addProfile(f.home, "work", { email: "w@x.io" });
++    await setLive(f.home, { email: "h@x.io" });
++    const file = join(f.home, ".claude", ".credentials.json");
++    const renewal = () => writeFile(file, credentials({ email: "h@x.io", token: "at-h-2", refresh: "rt-h-2" }));
++    await assert.rejects(
++      afterNextWriteTo(file, renewal, () => f.store.install("work")),
++      (error: unknown) => error instanceof StoreError && error.code === "invalid-login",
++    );
++    assert.equal((await readJson(join(f.home, ".claude.json"))).oauthAccount.emailAddress, "h@x.io");
++    assert.equal((await f.store.sync())?.id, "home");
++    assert.equal(
++      (await readJson(join(f.home, ".claude-home", ".credentials.json"))).claudeAiOauth.refreshToken,
++      "rt-h-2",
++    );
 +  });
 +
    it("keeps an account signed in by hand while offline as a new profile", async () => {
