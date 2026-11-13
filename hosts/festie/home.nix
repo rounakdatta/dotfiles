@@ -34,6 +34,39 @@ let
     };
   };
 
+  # Google Chrome with fonts it can find. The image ships no /etc/fonts and
+  # nixpkgs' fontconfig looks nowhere else, so Chrome fell back to one font and
+  # crashed outright on some pages (Gmail, blog.boidu.dev: "FATAL:
+  # SkFontMgr_FontConfigInterface.cpp: Not implemented"). A hand-made
+  # ~/.config/chrome-fontconfig fixed it until nix GC, then until the next pod
+  # restart. Here the fonts and their fonts.conf are part of this profile's
+  # closure, so they are baked into the image. Every launcher (agent-browser,
+  # Playwright's executablePath, scripts) execs one of these two names, so
+  # wrapping them covers all of them. Chrome itself is reused as is: it is
+  # unfree, so rebuilding it would mean no binary cache. --set-default leaves a
+  # FONTCONFIG_FILE exported by hand in charge.
+  # fontconfig's own conf.d carries the sans/serif/monospace/emoji aliases.
+  chromeFonts = pkgs.writeText "chrome-fonts.conf" ''
+    <?xml version="1.0"?>
+    <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+    <fontconfig>
+      <include>${pkgs.fontconfig.out}/etc/fonts/conf.d</include>
+      <dir>${pkgs.dejavu_fonts}/share/fonts</dir>
+      <dir>${pkgs.noto-fonts-color-emoji}/share/fonts</dir>
+      <cachedir prefix="xdg">fontconfig</cachedir>
+    </fontconfig>
+  '';
+  google-chrome = pkgs.symlinkJoin {
+    name = "google-chrome-with-fonts";
+    paths = [ pkgs.google-chrome ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      for bin in google-chrome google-chrome-stable; do
+        wrapProgram "$out/bin/$bin" --set-default FONTCONFIG_FILE ${chromeFonts}
+      done
+    '';
+  };
+
   # OpenCode 2, for Paseo's OpenCode provider (2.0.10 or newer). nixpkgs at
   # this pin cannot build it (its `bun install` no longer matches the pinned
   # hash, which is also why the binary cache lacks it), so this is upstream's
