@@ -24,14 +24,29 @@ let
         exit 1
       fi
 
-      # --max-delete: a mass deletion upstream, say a bad sync, stops here and
-      # fails the run, rather than emptying the backup too.
-      rsync --archive --delete --max-delete=50 \
-        --exclude=/.stfolder --exclude=/.stversions --exclude=/.stignore \
-        --exclude=.DS_Store \
-        --exclude=/.obsidian/workspace.json --exclude=/.obsidian/workspace-mobile.json \
-        "$vault/" "''${accounts[0]}/backups/obsidian/"
-      printf 'obsidian-backup: %(%F %T)T, up to date\n' -1
+      mirror() {
+        rsync --archive --delete \
+          --exclude=/.stfolder --exclude=/.stversions --exclude=/.stignore \
+          --exclude=.DS_Store \
+          --exclude=/.obsidian/workspace.json --exclude=/.obsidian/workspace-mobile.json \
+          "$@" "$vault/" "''${accounts[0]}/backups/obsidian/"
+      }
+
+      # A run that would delete more than 50 files deletes none and fails, so
+      # a mass deletion upstream (a bad sync, say) never reaches the backup on
+      # its own, not even 50 at a time. A deliberate one goes through with
+      # OBSIDIAN_BACKUP_FORCE=1 obsidian-backup.
+      deletions="$(mirror --dry-run --itemize-changes | grep -c '^\*deleting' || true)"
+      if [ "$deletions" -gt 50 ] && [ -z "''${OBSIDIAN_BACKUP_FORCE:-}" ]; then
+        echo "obsidian-backup: $deletions files would be deleted from the backup; nothing done. If that is meant: OBSIDIAN_BACKUP_FORCE=1 obsidian-backup" >&2
+        exit 1
+      fi
+
+      # Quiet when there is nothing to copy, which is most runs.
+      updated="$(mirror --itemize-changes | grep -c . || true)"
+      if [ "$updated" -gt 0 ]; then
+        printf 'obsidian-backup: %(%F %T)T, %s updated\n' -1 "$updated"
+      fi
     '';
   };
 in
@@ -41,10 +56,10 @@ lib.mkIf isDarwin {
     enable = true;
     config = {
       ProgramArguments = [ "${backup}/bin/obsidian-backup" ];
-      # Nightly; launchd runs a night it missed when the Mac next wakes.
-      # RunAtLoad adds a run at every login, and one as soon as a switch
-      # installs it.
-      StartCalendarInterval = [{ Hour = 3; Minute = 30; }];
+      # Every 15 minutes, so the backup trails the vault by no more than that;
+      # intervals missed asleep run once on wake. RunAtLoad adds a run at every
+      # login, and one as soon as a switch installs it.
+      StartInterval = 900;
       RunAtLoad = true;
       ProcessType = "Background";
       LowPriorityIO = true;
