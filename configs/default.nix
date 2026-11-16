@@ -26,5 +26,6 @@
     ./atuin
     ./hammerspoon
     ./screensaver
+    ./bookshelf
   ];
 }
