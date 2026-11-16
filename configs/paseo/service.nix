@@ -81,7 +81,10 @@ in
         ProgramArguments = [ "${bin}/fish" "--login" "--command" "exec ${bin}/paseo-daemon" ];
         RunAtLoad = true;
         KeepAlive = true;
-        StandardOutPath = log;
+        # The daemon writes its own log, ~/.paseo/daemon.log, and the same lines
+        # to stdout; launchd never rotates a log, so stdout is dropped. stderr
+        # keeps the launcher's messages and anything the daemon dies with.
+        StandardOutPath = "/dev/null";
         StandardErrorPath = log;
       };
     };
