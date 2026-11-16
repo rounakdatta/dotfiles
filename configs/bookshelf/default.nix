@@ -1,6 +1,6 @@
 { lib, pkgs, ... }:
 let
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 in
 # Darwin-only: books get downloaded on trueswiftie. On NixOS and festie this
   # module is a no-op.

@@ -1,6 +1,5 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, user, ... }:
 let
-  user = import ../../lib/user.nix;
   passwordStoreDir = "${config.home.homeDirectory}/.password-store";
   cfg = config.programs.githubOverSsh;
 in
@@ -46,9 +45,9 @@ in
           condition = "gitdir:~/work/";
           contents = {
             user = {
-              name = "Rounak Datta";
+              name = user.name;
               email = "rounak@lyric.tech";
-              signingKey = "A04E86FD28F5A421";
+              signingKey = user.gpgKey;
             };
           };
         }
@@ -57,7 +56,7 @@ in
       settings = {
         user = {
           email = user.email;
-          name = "Rounak Datta";
+          name = user.name;
         };
         diff.external = "difft";
       } // lib.optionalAttrs cfg.enable {

@@ -1,30 +1,14 @@
-{ config, pkgs, ... }: {
+{ ... }: {
   programs.ssh = {
     enable = true;
     # Explicitly disable default config to silence deprecation warning
     enableDefaultConfig = false;
 
-    matchBlocks = {
-      # Default config for all hosts
-      "*" = {
-        # Add any default SSH settings you want here
-      };
-
-      "github.com" = {
-        user = "rounakdatta";
-        identityFile = "~/.ssh/keys/personal.pem";
-        extraOptions = {
-          PreferredAuthentications = "publickey";
-        };
-      };
-
-      "gitlab.com" = {
-        user = "rounakdatta";
-        identityFile = "~/.ssh/keys/personal.pem";
-        extraOptions = {
-          PreferredAuthentications = "publickey";
-        };
-      };
+    # A Host line takes several patterns, so both forges share one block.
+    settings."github.com gitlab.com" = {
+      User = "rounakdatta";
+      IdentityFile = "~/.ssh/keys/personal.pem";
+      PreferredAuthentications = "publickey";
     };
   };
 }
