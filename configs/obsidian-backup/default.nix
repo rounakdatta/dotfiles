@@ -24,8 +24,10 @@ let
         exit 1
       fi
 
+      # --omit-dir-times: Nextcloud's File Provider keeps its own folder times,
+      # so copying the vault's would rewrite every folder on every run.
       mirror() {
-        rsync --archive --delete \
+        rsync --archive --omit-dir-times --delete \
           --exclude=/.stfolder --exclude=/.stversions --exclude=/.stignore \
           --exclude=.DS_Store \
           --exclude=/.obsidian/workspace.json --exclude=/.obsidian/workspace-mobile.json \
