@@ -3,7 +3,7 @@ let
   isDarwin = pkgs.stdenv.isDarwin;
 in
 # Darwin-only: books get downloaded on trueswiftie. On NixOS and festie this
-# module is a no-op.
+  # module is a no-op.
 lib.mkIf isDarwin {
   # `shelve` puts EPUBs on the bookshelf at books.taptappers.club (homelab.setup
   # kubernetes/apps/bookshelf), where the old iPad picks them up. With no
