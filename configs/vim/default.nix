@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, ... }: {
+{ pkgs, inputs, ... }: {
   programs.neovim = {
     enable = true;
     vimAlias = true;
@@ -8,7 +8,7 @@
     withRuby = false;
     withPython3 = true;
 
-    plugins = with pkgs.vimPlugins; [
+    plugins = [
       {
         plugin = pkgs.vimUtils.buildVimPlugin {
           name = "copilot.lua";

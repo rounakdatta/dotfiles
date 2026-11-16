@@ -1,6 +1,6 @@
 { config, lib, pkgs, ... }:
 let
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 
   # The desk-pet overlay. Hammerspoon (the app) is installed as a brew cask in
   # hosts/trueswiftie/software.nix; here we just manage its config. @TMUX@ is

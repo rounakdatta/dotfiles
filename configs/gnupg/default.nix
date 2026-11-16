@@ -1,7 +1,6 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, user, ... }:
 let
-  isDarwin = pkgs.stdenv.isDarwin;
-  user = import ../../lib/user.nix;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
   # the exported, passphrase-protected secret key lives here on a fresh machine
   gpgKeyImportPath = "${config.home.homeDirectory}/.secrets/private.key";
 in
@@ -18,6 +17,15 @@ in
     pinentry.package = lib.mkDefault (if isDarwin then pkgs.pinentry_mac else pkgs.pinentry-gnome3);
     enableSshSupport = lib.mkDefault (!isDarwin);
   };
+
+  # home-manager's launchd job for the agent can only crash-loop on macOS. It
+  # runs `gpg-agent --supervised`, which wants its socket handed over the
+  # systemd way, and launchd never does that: the agent exits 2, and the job's
+  # KeepAlive (SuccessfulExit = false, which implies RunAtLoad) starts it again
+  # ten seconds later, forever. Nothing is lost without it: gpg starts an agent
+  # whenever it needs one, and useNixGpgAgent below launches one on every
+  # switch. Linux has no launchd, so this is a no-op there.
+  launchd.agents.gpg-agent.enable = lib.mkForce false;
 
   # GPG Suite (brew) ships gpg-agent 2.2.41 and auto-starts it, while nix's gpg
   # is 2.4.9. Both share ~/.gnupg/S.gpg-agent, so gopass/git hit the older agent

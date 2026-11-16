@@ -5,6 +5,7 @@
 }:
 let
   homeDir = config.home.homeDirectory;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 
   # Where the real Claude Code lives, before the wrapper below layers
   # hierarchical skills on top. On macOS this stays the Homebrew install, which
@@ -13,7 +14,7 @@ let
   # flake.lock, so bumping it is a lockfile bump. CLAUDE_REAL_BINARY still wins
   # over both.
   defaultClaudeBinary =
-    if pkgs.stdenv.isDarwin
+    if isDarwin
     then "/opt/homebrew/bin/claude"
     else "${pkgs.claude-code}/bin/claude";
 
@@ -431,15 +432,15 @@ let
       # pane). PostToolUse clears it back to "working" once you've answered.
       # (Hooks for the built-in AskUserQuestion tool are undocumented but confirmed
       # to fire — verified live via ~/.cache/claude-sessions.)
-      PreToolUse = lib.optionals pkgs.stdenv.isDarwin [{ matcher = "AskUserQuestion"; hooks = trackerHook; }];
-      UserPromptSubmit = lib.optionals pkgs.stdenv.isDarwin [{ hooks = trackerHook; }];
-      Stop = lib.optionals pkgs.stdenv.isDarwin [{ hooks = trackerHook; }];
-      Notification = lib.optionals pkgs.stdenv.isDarwin [{ matcher = "idle_prompt"; hooks = trackerHook; }];
-      SessionStart = lib.optionals pkgs.stdenv.isDarwin [{ hooks = trackerHook; }];
-      SessionEnd = lib.optionals pkgs.stdenv.isDarwin [{ hooks = trackerHook; }];
+      PreToolUse = lib.optionals isDarwin [{ matcher = "AskUserQuestion"; hooks = trackerHook; }];
+      UserPromptSubmit = lib.optionals isDarwin [{ hooks = trackerHook; }];
+      Stop = lib.optionals isDarwin [{ hooks = trackerHook; }];
+      Notification = lib.optionals isDarwin [{ matcher = "idle_prompt"; hooks = trackerHook; }];
+      SessionStart = lib.optionals isDarwin [{ hooks = trackerHook; }];
+      SessionEnd = lib.optionals isDarwin [{ hooks = trackerHook; }];
 
       PostToolUse =
-        lib.optionals pkgs.stdenv.isDarwin [{ matcher = "AskUserQuestion"; hooks = trackerHook; }]
+        lib.optionals isDarwin [{ matcher = "AskUserQuestion"; hooks = trackerHook; }]
           # bash-history: writes each Bash tool call into atuin. atuin refuses
           # without $ATUIN_SESSION, which only its shell integration sets -- and a
           # session Codeman launches never has it. On festie this failed on every
@@ -760,7 +761,7 @@ in
   #
   # and the bash-history server never starts at all. Non-blocking, so it only
   # ever looked like noise — but it fired on every single command.
-  ++ lib.optional (!pkgs.stdenv.isDarwin) pkgs.bun;
+  ++ lib.optional (!isDarwin) pkgs.bun;
 
   # Create ~/.claude directory and settings.json
   home.file.".claude/settings.json" = {

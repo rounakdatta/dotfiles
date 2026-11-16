@@ -1,6 +1,6 @@
 { lib, pkgs, ... }:
 let
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 
   # Build the ClaudePets.saver bundle: an ObjC ScreenSaverView (claude-pets.m)
   # compiled against Cocoa + ScreenSaver, plus the two bot logos shared with the
