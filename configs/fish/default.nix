@@ -1,15 +1,16 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 in
 {
   programs.fish = {
     enable = true;
-    interactiveShellInit = ''
-      if [ -n "$TMUX_PANE" ]
-        set HISTFILE $HOME/.local/share/fish/fish_history_tmux_$TMUX_PANE
-      end
 
+    # The environment, for every fish rather than only one at a prompt: a
+    # script, `fish -c`, or a service started through a login shell (the
+    # Paseo daemon, configs/paseo/service.nix) would otherwise run without the
+    # Nix and Homebrew paths a terminal has.
+    shellInit = ''
       set GOPATH $HOME/go
       set PATH $GOPATH/bin $PATH
       set PATH $HOME/.npm-packages/bin $PATH
@@ -22,7 +23,7 @@ in
       set XDG_DATA_HOME /run/current-system/sw/share/X11
 
       set NIXPKGS_ALLOW_UNFREE 1
-            
+
       # Chrome reads TZ from the environment rather than the NixOS-level setting,
       # so it needs to be exported, not just set: a bare `set` makes a shell-local
       # variable that no child process ever sees. -gx also means this is one
@@ -30,10 +31,28 @@ in
       # layer get the same value from configs/timezone, which ships the zoneinfo
       # database that makes any of it resolvable in the first place.
       set -gx TZ Asia/Kolkata
-    '' +
-    ''
+
       set -gx LC_ALL en_US.UTF-8
       set -gx LANG en_US.UTF-8
+    '' + lib.optionalString isDarwin ''
+
+      # this is needed, otherwise darwin-rebuild wouldn't be in PATH
+      fish_add_path --prepend --global "$HOME/.nix-profile/bin" /nix/var/nix/profiles/default/bin /run/current-system/sw/bin
+      set PATH $PATH /etc/profiles/per-user/${config.home.username}/bin
+      set PATH $PATH /opt/homebrew/bin
+      set PATH $PATH /opt/homebrew/opt/node@18/bin
+      set PATH $PATH /Applications/Obsidian.app/Contents/MacOS
+      set JAVA_HOME /usr/libexec/java_home
+      set ANDROID_HOME /opt/homebrew/share/android-commandlinetools
+      set PATH $ANDROID_HOME/platform-tools $ANDROID_HOME/cmdline-tools/latest/bin $PATH
+      set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
+    '';
+
+    # What only a person at a prompt needs.
+    interactiveShellInit = ''
+      if [ -n "$TMUX_PANE" ]
+        set HISTFILE $HOME/.local/share/fish/fish_history_tmux_$TMUX_PANE
+      end
 
       set -U fish_color_autosuggestion      brblack
       set -U fish_color_cancel              -r
@@ -57,37 +76,16 @@ in
       set -U fish_color_status              red
       set -U fish_color_user                brgreen
       set -U fish_color_valid_path          --underline
-      set -U fish_greeting                  
+      set -U fish_greeting
       set -U fish_pager_color_completion    normal
       set -U fish_pager_color_description   yellow
       set -U fish_pager_color_prefix        'white' '--bold' '--underline'
       set -U fish_pager_color_progress      'brwhite' '--background=cyan'
-    '' +
-    ''
+
       alias vim="nvim"
-    '' +
-    (if isDarwin then
-      ''
-        # this is needed, otherwise darwin-rebuild wouldn't be in PATH
-        fish_add_path --prepend --global "$HOME/.nix-profile/bin" /nix/var/nix/profiles/default/bin /run/current-system/sw/bin
-        set PATH $PATH /etc/profiles/per-user/${config.home.username}/bin
-        set PATH $PATH /opt/homebrew/bin
-        set PATH $PATH /opt/homebrew/opt/node@18/bin
-        set PATH $PATH /Applications/Obsidian.app/Contents/MacOS
-        set JAVA_HOME /usr/libexec/java_home
-        set ANDROID_HOME /opt/homebrew/share/android-commandlinetools
-        set PATH $ANDROID_HOME/platform-tools $ANDROID_HOME/cmdline-tools/latest/bin $PATH
-        set PASSWORD_STORE_DIR /Users/${config.home.username}/.password-store
-      ''
-    else
-      ''
-      ''
-    )
-    +
-    ''
+
       atuin init fish --disable-up-arrow | source
-    ''
-    ;
+    '';
     plugins = [
       {
         name = "nvm";
