@@ -23,7 +23,7 @@
 #                         declared here and applied by `paseo-apply-declared`
 #                         against the running daemon (schedules matched by
 #                         name). agentfest runs it after every daemon start;
-#                         anywhere else, run it by hand once the daemon is up.
+#                         on a Mac, the launchd service does (service.nix).
 #
 # Merge rules for lists: `daemon.agentProfiles` and every
 # `agents.providers.<id>.additionalModels` merge by `id` — declared entries
@@ -311,13 +311,18 @@ let
   };
 in
 {
+  # defaults.nix: the agent settings every host shares. service.nix: the
+  # daemon as a launchd agent, for a Mac.
+  imports = [ ./defaults.nix ./service.nix ];
+
   options.programs.paseo = {
     enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
       description = ''
         Manage Paseo's daemon configuration and projects on this host. Only
-        meaningful where a Paseo daemon runs — the agentfest computer.
+        meaningful where a Paseo daemon runs: the agentfest computer, and a Mac
+        with `service.enable`.
       '';
     };
 

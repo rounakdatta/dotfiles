@@ -1,4 +1,4 @@
-{ pkgs, lib, user, ... }:
+{ config, pkgs, lib, user, ... }:
 {
 
   imports = [
@@ -126,5 +126,18 @@
     cargo-packages.packages = [
       "--git https://github.com/fu5ha/zed-workspaces"
     ];
+
+    # A Paseo daemon here as well as on festie, so the phone and the desktop
+    # app can start agents on this Mac, with its tools and logins. Agents get
+    # the defaults every host shares (configs/paseo/defaults.nix); Claude stays
+    # on Paseo's Auto mode here, bypass being a profile away.
+    paseo = {
+      enable = true;
+      service.enable = true;
+      projects = {
+        personal = "${config.home.homeDirectory}/personal";
+        work = "${config.home.homeDirectory}/work";
+      };
+    };
   };
 }
