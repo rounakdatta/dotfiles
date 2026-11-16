@@ -27,5 +27,6 @@
     ./hammerspoon
     ./screensaver
     ./bookshelf
+    ./obsidian-backup
   ];
 }
