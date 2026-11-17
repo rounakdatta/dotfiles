@@ -474,15 +474,16 @@ in
         # Ours (rounakdatta/hopkins, MIT): reminders said to any agent come back
         # at the right moment in one "hopkins" conversation, plus daily notes,
         # open loops noticed in conversations, tasks done at a time ("at 8pm, do
-        # my web check-in") and repeats that stop once a check holds. Needs Paseo
+        # my web check-in") that retry wisely, check-ins (Yes / Not today, or a
+        # mood slider) and repeats that stop once a check holds. Needs Paseo
         # 0.16. Its server runs a localhost MCP server for the agents and calls
         # the model endpoint kept with its key in ~/.paseo/plugin-data/hopkins/
         # llm-key; nothing else leaves the host. Pinned to a release commit.
         hopkins.src = pkgs.fetchFromGitHub {
           owner = "rounakdatta";
           repo = "hopkins";
-          rev = "2485fb67f8d1871045bd58b1c7a74174a310c3c1"; # v0.2.0
-          hash = "sha256-P4SH3A8BiYpO4oTTF+bCxeRfwbSD1/v2fxoyY/iXcnI=";
+          rev = "305087cb4681c975aa071053f6fc2d2857b07992"; # v0.3.0
+          hash = "sha256-tUvfDc1yFW35sTw75oIT4PbAQ3yKUfze1cx9Bc6TLxw=";
         };
       };
 
