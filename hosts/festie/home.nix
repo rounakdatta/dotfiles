@@ -472,17 +472,17 @@ in
           patches = [ ../../configs/paseo/plugins/seamless-claude-accounts.patch ];
         };
         # Ours (rounakdatta/hopkins, MIT): reminders said to any agent come back
-        # at the right moment in one "hopkins" conversation, plus daily notes and
-        # open loops noticed in conversations. Needs Paseo 0.16. Its server runs
-        # a localhost MCP server for the agents and calls the model endpoint kept
-        # with its key in ~/.paseo/plugin-data/hopkins/llm-key; nothing else
-        # leaves the host. Pinned to a commit: v0.1.0 built only beside its own
-        # node_modules, and Paseo refused the store copy.
+        # at the right moment in one "hopkins" conversation, plus daily notes,
+        # open loops noticed in conversations, tasks done at a time ("at 8pm, do
+        # my web check-in") and repeats that stop once a check holds. Needs Paseo
+        # 0.16. Its server runs a localhost MCP server for the agents and calls
+        # the model endpoint kept with its key in ~/.paseo/plugin-data/hopkins/
+        # llm-key; nothing else leaves the host. Pinned to a release commit.
         hopkins.src = pkgs.fetchFromGitHub {
           owner = "rounakdatta";
           repo = "hopkins";
-          rev = "82a1ced5e549d402e65d34f889b46732d27ad618";
-          hash = "sha256-KfJXlLFjbvVhzgj61Oz3Yf0vJqCtFez5a54JUMcZhlI=";
+          rev = "2485fb67f8d1871045bd58b1c7a74174a310c3c1"; # v0.2.0
+          hash = "sha256-P4SH3A8BiYpO4oTTF+bCxeRfwbSD1/v2fxoyY/iXcnI=";
         };
       };
 
