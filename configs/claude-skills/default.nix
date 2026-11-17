@@ -26,6 +26,12 @@ in
     # Sync private repo and link skills based on per-skill metadata.
     home.activation.syncPrivateSkills = lib.mkIf cfg.enablePrivate (
       lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        # `git`, and the `ssh` it runs, from the profile. The activation's own
+        # PATH is a fixed list without either, so a bare `git` here died with
+        # "command not found" on every boot and took the rest of the
+        # activation with it. `ssh` is in /usr/bin on darwin.
+        export PATH="${config.home.path}/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:$PATH:/usr/bin"
+
         SKILLS_DIR="$HOME/.claude/skills"
         CACHE_DIR="$HOME/.cache/agent-smith"
         EXTERNAL_CACHE_DIR="$HOME/.cache/agent-smith-externals"
@@ -60,11 +66,14 @@ in
 
         if [ ! -d "$CACHE_DIR" ]; then
           git clone -b ${cfg.privateRepo.ref} ${cfg.privateRepo.url} "$CACHE_DIR"
-        else
-          git -C "$CACHE_DIR" fetch origin ${cfg.privateRepo.ref}
+        # A failed fetch (no network yet at boot, say) keeps the skills already
+        # here instead of aborting every activation step after this one.
+        elif git -C "$CACHE_DIR" fetch origin ${cfg.privateRepo.ref}; then
           git -C "$CACHE_DIR" checkout ${cfg.privateRepo.ref} || true
           git -C "$CACHE_DIR" reset --hard origin/${cfg.privateRepo.ref}
           git -C "$CACHE_DIR" clean -fd
+        else
+          echo "note: agent-smith not fetched; keeping the skills already in $CACHE_DIR" >&2
         fi
 
         # Remove only previously managed links.

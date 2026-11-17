@@ -476,12 +476,13 @@ in
         # open loops noticed in conversations. Needs Paseo 0.16. Its server runs
         # a localhost MCP server for the agents and calls the model endpoint kept
         # with its key in ~/.paseo/plugin-data/hopkins/llm-key; nothing else
-        # leaves the host. Pinned to the signed v0.1.0 tag's commit.
+        # leaves the host. Pinned to a commit: v0.1.0 built only beside its own
+        # node_modules, and Paseo refused the store copy.
         hopkins.src = pkgs.fetchFromGitHub {
           owner = "rounakdatta";
           repo = "hopkins";
-          rev = "7bd6b779fc23ffdb81eacbdfea83d693b2058e78";
-          hash = "sha256-ESHLr8cKJv2lKnXy8/ZHafPfBB+GFe+f5yDnZc7/S3w=";
+          rev = "82a1ced5e549d402e65d34f889b46732d27ad618";
+          hash = "sha256-KfJXlLFjbvVhzgj61Oz3Yf0vJqCtFez5a54JUMcZhlI=";
         };
       };
 
