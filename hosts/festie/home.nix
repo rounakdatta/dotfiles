@@ -439,8 +439,9 @@ in
         # query, with the gh login already on PATH.
         pr-radar = {
           npm = "@omercnet/paseo-pr-radar";
-          version = "3.2.1";
-          integrity = "sha512-Z7H8IRZrr6SHlLmSL3Gjh4xrXxI+U42vRJMKbWuN6dfk4eRbSHjU2ppWuWwl9ArrhWjSRepBsrkPQuC8oL+SXA==";
+          # 3.2.3 accepts Paseo 0.16; its server code is unchanged from 3.2.1 (client-only diff).
+          version = "3.2.3";
+          integrity = "sha512-vLqNDVR5OXqusEzP0jf4SoEYynA0G6A1u1MKroXDUlPH6atU1mkElaSpfMnAcQyJ5IZ8y7n0yxaV/ofNxmqAzQ==";
         };
         # Each workspace's Beads queue, through `bd --readonly`, from the
         # trackers declared in `beads` below.
@@ -449,8 +450,9 @@ in
         agent-mcp.src = ../../configs/paseo/plugins/agent-mcp;
         paseo-beads = {
           npm = "@omercnet/paseo-beads";
-          version = "3.1.1";
-          integrity = "sha512-TN8gJI42m+vl0grzMX9JcnCT/o6sHmgCngpPxtNOXAgd4iGcGJ1d/57ZEPw2U4yzYOOPFeJNwC6B9tDWAb/Xrw==";
+          # 3.1.2 only widens requirements.paseo to include 0.16; no code change from 3.1.1.
+          version = "3.1.2";
+          integrity = "sha512-WBRfW0aXwWJdze6ZHZxtD+6yLK7a6z4SVzNdXtSLFyZweZfeTngzzep1ND7GZ4rTfWoD7UtjF70PyalsB9UaTg==";
         };
         # Both Claude orgs behind every chat (ChoqueCastroLD, MIT). A
         # workspace's chats run with CLAUDE_CONFIG_DIR set to a link the plugin
@@ -468,6 +470,18 @@ in
             hash = "sha256-4MlH2jazj+Jh/wGsQTaBvy6+lLJDwfR0/tidir4maPw=";
           };
           patches = [ ../../configs/paseo/plugins/seamless-claude-accounts.patch ];
+        };
+        # Ours (rounakdatta/hopkins, MIT): reminders said to any agent come back
+        # at the right moment in one "hopkins" conversation, plus daily notes and
+        # open loops noticed in conversations. Needs Paseo 0.16. Its server runs
+        # a localhost MCP server for the agents and calls the model endpoint kept
+        # with its key in ~/.paseo/plugin-data/hopkins/llm-key; nothing else
+        # leaves the host. Pinned to the signed v0.1.0 tag's commit.
+        hopkins.src = pkgs.fetchFromGitHub {
+          owner = "rounakdatta";
+          repo = "hopkins";
+          rev = "7bd6b779fc23ffdb81eacbdfea83d693b2058e78";
+          hash = "sha256-ESHLr8cKJv2lKnXy8/ZHafPfBB+GFe+f5yDnZc7/S3w=";
         };
       };
 
