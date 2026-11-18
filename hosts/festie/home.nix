@@ -482,8 +482,8 @@ in
         hopkins.src = pkgs.fetchFromGitHub {
           owner = "rounakdatta";
           repo = "hopkins";
-          rev = "305087cb4681c975aa071053f6fc2d2857b07992"; # v0.3.0
-          hash = "sha256-tUvfDc1yFW35sTw75oIT4PbAQ3yKUfze1cx9Bc6TLxw=";
+          rev = "214b7a9ae4953330ae29dcf562d6a330252f7c2d"; # v0.3.2
+          hash = "sha256-2B3cV5/fUDbhaRld+7d8nHOX24SsINxABwWVhmp5bSg=";
         };
       };
 
