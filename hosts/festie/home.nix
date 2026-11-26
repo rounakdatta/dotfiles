@@ -431,17 +431,23 @@ in
       };
 
       # Third-party code that runs unsandboxed as this user, so pinned to
-      # versions whose server code was read. pr-radar and paseo-beads
-      # (omercnet, MIT) only read, through the CLIs named below.
+      # versions whose server code was read. paseo-beads (omercnet, MIT) only
+      # reads; pr-radar (omercnet, MIT) reads, and writes only on a click.
+      # Each app checks requirements.paseo against its OWN version, and the
+      # apps update themselves ahead of this daemon: a plugin whose range stops
+      # at the daemon's minor vanishes from the apps (it did at app 0.17.4).
       plugins = {
         # Open pull requests you wrote or were asked to review, sorted by who
-        # has to act next. Runs `gh search prs`, `gh api user` and one GraphQL
-        # query, with the gh login already on PATH.
+        # has to act next. Runs `gh search prs`, `gh search issues`, `gh api
+        # user` and one GraphQL query, with the gh login already on PATH.
         pr-radar = {
           npm = "@omercnet/paseo-pr-radar";
-          # 3.2.3 accepts Paseo 0.16; its server code is unchanged from 3.2.1 (client-only diff).
-          version = "3.2.3";
-          integrity = "sha512-vLqNDVR5OXqusEzP0jf4SoEYynA0G6A1u1MKroXDUlPH6atU1mkElaSpfMnAcQyJ5IZ8y7n0yxaV/ofNxmqAzQ==";
+          # 3.3.0, the first to accept Paseo 0.17. New since 3.2.3, and only on
+          # a click in its Start-agent dialog: git clone, fetch and worktree
+          # under its source folder (~/src unless set), and a routing script
+          # if one is set (none is). Unprompted it only reads, from GitHub.
+          version = "3.3.0";
+          integrity = "sha512-KqRLr0+MtcQsXbNmkHIKPlhip5CaL6prvyRg+XRDl7CzskCaMRtYIjdjIUWtMuI8UyZlWjdn6ZKAd0hVgvamfQ==";
         };
         # Each workspace's Beads queue, through `bd --readonly`, from the
         # trackers declared in `beads` below.
@@ -450,9 +456,9 @@ in
         agent-mcp.src = ../../configs/paseo/plugins/agent-mcp;
         paseo-beads = {
           npm = "@omercnet/paseo-beads";
-          # 3.1.2 only widens requirements.paseo to include 0.16; no code change from 3.1.1.
-          version = "3.1.2";
-          integrity = "sha512-WBRfW0aXwWJdze6ZHZxtD+6yLK7a6z4SVzNdXtSLFyZweZfeTngzzep1ND7GZ4rTfWoD7UtjF70PyalsB9UaTg==";
+          # 3.1.3 only widens requirements.paseo to include 0.17; no code change from 3.1.2.
+          version = "3.1.3";
+          integrity = "sha512-E8ZBIyKvnAelVOWuJPBMH9wYI2nl7JOLU9nJ9I28acXsZN2GiKahxgfBhbR66Tu+A00WApCrL4PIFOvhiMgclQ==";
         };
         # Both Claude orgs behind every chat (ChoqueCastroLD, MIT). A
         # workspace's chats run with CLAUDE_CONFIG_DIR set to a link the plugin
@@ -476,14 +482,15 @@ in
         # open loops noticed in conversations, tasks done at a time ("at 8pm, do
         # my web check-in") that retry wisely, check-ins (Yes / Not today, or a
         # mood slider) and repeats that stop once a check holds. Needs Paseo
-        # 0.16. Its server runs a localhost MCP server for the agents and calls
-        # the model endpoint kept with its key in ~/.paseo/plugin-data/hopkins/
-        # llm-key; nothing else leaves the host. Pinned to a release commit.
+        # 0.16.1 or later. Its server runs a localhost MCP server for the
+        # agents and calls the model endpoint kept with its key in
+        # ~/.paseo/plugin-data/hopkins/llm-key; nothing else leaves the host.
+        # Pinned to a release commit.
         hopkins.src = pkgs.fetchFromGitHub {
           owner = "rounakdatta";
           repo = "hopkins";
-          rev = "e3d543dc4ea292aacbd0b59ec268aac053a9a40d"; # v0.4.2
-          hash = "sha256-Br/91NRKxMwq4hEUZ1nkpbuAbg23lO32zg52QMEHDeY=";
+          rev = "11f9a7159bd0a06a6f37997166f0359f465d78c5"; # v0.4.3
+          hash = "sha256-0efwbpJbJ6sDT7fBHvmlcoRAGiJAlo3G8oILIb/Kqpk=";
         };
       };
 
